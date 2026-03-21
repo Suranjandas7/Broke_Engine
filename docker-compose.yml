@@ -13,3 +13,5 @@ services:
       - user=
       - password=
       - apikey=
+      - JWT_EXPIRATION_DAYS=5
+      - JWT_SECRET_KEY=

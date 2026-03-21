@@ -1,16 +1,50 @@
-"""API key validation middleware."""
+"""JWT authentication middleware."""
 
+import jwt
+from datetime import datetime, timedelta, timezone
 from flask import request, Response
 from app.config import Config
 
 
+def generate_token(username):
+    """Generate a JWT token for the given username."""
+    payload = {
+        'username': username,
+        'exp': datetime.now(timezone.utc) + timedelta(days=Config.JWT_EXPIRATION_DAYS),
+        'iat': datetime.now(timezone.utc)
+    }
+    return jwt.encode(payload, str(Config.SECRET_KEY), algorithm='HS256')
+
+
+def verify_token(token):
+    """Verify a JWT token and return the payload if valid."""
+    try:
+        payload = jwt.decode(token, str(Config.SECRET_KEY), algorithms=['HS256'])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+
 def check_api_key():
-    """Require API key for all endpoints except / and /login."""
-    if request.endpoint in ['auth.index', 'auth.login', 'static']:
+    """Require JWT token for all endpoints except /, /login, /auth/token, /cache_instruments, and static."""
+    if request.endpoint in ['auth.index', 'auth.login', 'auth.generate_token_endpoint', 'instruments.cache_instruments', 'static']:
         return None
     
-    api_key_param = request.args.get('apikey')
-    if api_key_param != Config.API_KEY:
-        return Response('Invalid or missing API key', 401)
+    # Get Authorization header
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return Response('Missing Authorization header', 401)
+    
+    # Extract Bearer token
+    parts = auth_header.split()
+    if len(parts) != 2 or parts[0].lower() != 'bearer':
+        return Response('Invalid Authorization header format. Use: Bearer <token>', 401)
+    
+    token = parts[1]
+    payload = verify_token(token)
+    if not payload:
+        return Response('Invalid or expired token', 401)
     
     return None
