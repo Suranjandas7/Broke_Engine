@@ -3,6 +3,7 @@
 import os
 import logging
 from flask import Blueprint, request, jsonify
+from app.middleware.auth import requires_basic_auth
 from app.services import get_kite_client
 from app.database import (
     init_instruments_db,
@@ -18,6 +19,7 @@ instruments_bp = Blueprint('instruments', __name__)
 
 
 @instruments_bp.route("/cache_instruments")
+@requires_basic_auth
 def cache_instruments():
     """Cache all instruments from Kite API into SQLite database."""
     try:

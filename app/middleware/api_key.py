@@ -28,8 +28,8 @@ def verify_token(token):
 
 
 def check_api_key():
-    """Require JWT token for all endpoints except /, /login, /auth/token, and static."""
-    if request.endpoint in ['auth.index', 'auth.login', 'auth.generate_token', 'static']:
+    """Require JWT token for all endpoints except /, /login, /auth/token, /cache_instruments, and static."""
+    if request.endpoint in ['auth.index', 'auth.login', 'auth.generate_token_endpoint', 'instruments.cache_instruments', 'static']:
         return None
     
     # Get Authorization header
