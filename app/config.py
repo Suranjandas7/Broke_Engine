@@ -6,8 +6,8 @@ import os
 class Config:
     """Application configuration class."""
     
-    # Flask configuration
-    SECRET_KEY = os.urandom(24)
+    # Flask configuration - Used as JWT signing key
+    SECRET_KEY = os.getenv("JWT_SECRET_KEY", os.urandom(24))
     HOST = "0.0.0.0"
     PORT = 5010
     

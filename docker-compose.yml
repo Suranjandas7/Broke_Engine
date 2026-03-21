@@ -7,10 +7,11 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - zerodha_api=wa00lt8ba2dfxmfy
-      - zerodha_secret=kqn69mrnj8ou2zbma4np9aypa330bs45
-      - data_sql_url=postgres://localhost:5402/testdb
-      - user=das
-      - password=q2w3e4r5
-      - apikey=test
+      - zerodha_api=
+      - zerodha_secret=
+      - data_sql_url=
+      - user=
+      - password=
+      - apikey=
       - JWT_EXPIRATION_DAYS=5
+      - JWT_SECRET_KEY=
