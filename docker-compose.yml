@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5010:5010"
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - zerodha_api=
+      - zerodha_secret=
+      - data_sql_url=
+      - user=
+      - password=
+      - apikey=

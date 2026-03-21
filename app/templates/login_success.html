@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Success - Broke Engine</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h2 {
+            color: green;
+        }
+        .token-box {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+        .token-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .token-value {
+            font-family: monospace;
+            background-color: #fff;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        a {
+            color: #387ed1;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h2>Success</h2>
+    
+    <div class="token-box">
+        <div class="token-label">Access token:</div>
+        <div class="token-value">{{ access_token }}</div>
+    </div>
+    
+    <a href="https://kite.trade/docs/connect/v1/" target="_blank">
+        <h4>Check Kite Connect docs for other calls.</h4>
+    </a>
+</body>
+</html>

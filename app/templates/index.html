@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broke Engine - Kite Connect</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .info {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        a {
+            text-decoration: none;
+        }
+        .login-button {
+            display: inline-block;
+            background-color: #387ed1;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        .login-button:hover {
+            background-color: #2d6ab4;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <p>Make sure your app with api_key - <code>{{ api_key }}</code> has set redirect to <code>{{ redirect_url }}</code>.</p>
+        <p>If not you can set it from your <a href="{{ console_url }}" target="_blank">Kite Connect developer console here</a>.</p>
+    </div>
+    
+    <a href="{{ login_url }}" class="login-button">
+        <h1 style="margin: 0; color: white;">Login to generate access token</h1>
+    </a>
+</body>
+</html>
