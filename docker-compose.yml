@@ -12,4 +12,4 @@ services:
       - data_sql_url=
       - user=
       - password=
-      - apikey=
+      - JWT_EXPIRATION_DAYS=7

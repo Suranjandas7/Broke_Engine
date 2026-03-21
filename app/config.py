@@ -20,12 +20,12 @@ class Config:
     LOGIN_URL = f"https://kite.zerodha.com/connect/login?api_key={KITE_API_KEY}"
     CONSOLE_URL = f"https://developers.kite.trade/apps/{KITE_API_KEY}"
     
-    # Basic authentication configuration
+    # Basic authentication configuration (for web routes)
     AUTH_USER = os.getenv("user")
     AUTH_PASSWORD = os.getenv("password")
     
-    # API key configuration
-    API_KEY = os.getenv("apikey")
+    # JWT configuration
+    JWT_EXPIRATION_DAYS = int(os.getenv("JWT_EXPIRATION_DAYS", "7"))
     
     # Options Greeks calculation configuration
     RISK_FREE_RATE = float(os.getenv("RISK_FREE_RATE", "0.065"))  # Default 6.5% for India
@@ -37,8 +37,7 @@ class Config:
             'KITE_API_KEY': cls.KITE_API_KEY,
             'KITE_API_SECRET': cls.KITE_API_SECRET,
             'AUTH_USER': cls.AUTH_USER,
-            'AUTH_PASSWORD': cls.AUTH_PASSWORD,
-            'API_KEY': cls.API_KEY
+            'AUTH_PASSWORD': cls.AUTH_PASSWORD
         }
         
         missing = [name for name, value in required_vars.items() if not value]

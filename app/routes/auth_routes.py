@@ -2,9 +2,10 @@
 
 import json
 import logging
-from flask import Blueprint, request, session, render_template
+from flask import Blueprint, request, session, render_template, jsonify
 from app.config import Config
 from app.middleware.auth import requires_basic_auth
+from app.middleware.api_key import generate_token
 from app.services import get_kite_client
 from app.database import save_access_token
 from app.utils import serializer
@@ -59,3 +60,57 @@ def testing():
         "738561", "2025-03-16 15:00:00", "2026-03-16 15:15:00", "day"
     )
     return str(historical_data)
+
+
+@auth_bp.route("/auth/token", methods=['POST'])
+def generate_token_endpoint():
+    """
+    Generate JWT token for API authentication.
+    
+    Request Body (JSON):
+    {
+        "username": "user",
+        "password": "password"
+    }
+    
+    Response:
+    {
+        "token": "<jwt_token>"
+    }
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({
+            'status': 'error',
+            'message': 'Request body must be JSON'
+        }), 400
+    
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({
+            'status': 'error',
+            'message': 'username and password are required'
+        }), 400
+    
+    # Validate credentials
+    if username != Config.AUTH_USER or password != Config.AUTH_PASSWORD:
+        return jsonify({
+            'status': 'error',
+            'message': 'Invalid credentials'
+        }), 401
+    
+    # Generate token
+    try:
+        token = generate_token(username)
+        return jsonify({
+            'status': 'success',
+            'token': token
+        }), 200
+    except Exception as e:
+        logging.error(f"Error generating token: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to generate token'
+        }), 500
