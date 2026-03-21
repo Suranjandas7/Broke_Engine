@@ -22,7 +22,8 @@ def index():
         api_key=Config.KITE_API_KEY,
         redirect_url=Config.REDIRECT_URL,
         console_url=Config.CONSOLE_URL,
-        login_url=Config.LOGIN_URL
+        login_url=Config.LOGIN_URL,
+        jwt_expiration_days=Config.JWT_EXPIRATION_DAYS
     )
 
 

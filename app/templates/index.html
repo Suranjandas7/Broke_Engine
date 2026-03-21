@@ -40,6 +40,80 @@
             padding: 2px 6px;
             border-radius: 3px;
         }
+        .jwt-section {
+            background-color: #f0f0f0;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        .jwt-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .token-box {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            word-break: break-all;
+            border: 1px solid #ddd;
+        }
+        .token-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .token-value {
+            font-family: monospace;
+            background-color: #f8f8f8;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .copy-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .copy-button:hover {
+            background-color: #45a049;
+        }
+        .copy-button.copied {
+            background-color: #2d6ab4;
+        }
+        .jwt-form {
+            margin-top: 15px;
+        }
+        .jwt-form input {
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            width: 200px;
+        }
+        .jwt-form button {
+            background-color: #387ed1;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .jwt-form button:hover {
+            background-color: #2d6ab4;
+        }
+        .error-message {
+            color: #d32f2f;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -51,5 +125,76 @@
     <a href="{{ login_url }}" class="login-button">
         <h1 style="margin: 0; color: white;">Login to generate access token</h1>
     </a>
+    
+    <div class="jwt-section">
+        <h3>API Authentication (JWT Token)</h3>
+        <p>Use this token to authenticate API requests. Include it in the Authorization header:</p>
+        <code>Authorization: Bearer &lt;token&gt;</code>
+        
+        <div id="jwt-display" style="display: none;">
+            <div class="token-box">
+                <div class="token-label">Your JWT Token (expires in {{ jwt_expiration_days }} days):</div>
+                <div class="token-value" id="jwt-token"></div>
+            </div>
+            <button class="copy-button" onclick="copyToken()">Copy Token</button>
+        </div>
+        
+        <div class="jwt-form" id="jwt-form">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button onclick="getToken()">Get Token</button>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+    </div>
+    
+    <script>
+        async function getToken() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+            
+            if (!username || !password) {
+                errorDiv.textContent = 'Please enter both username and password';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/auth/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('jwt-token').textContent = data.token;
+                    document.getElementById('jwt-display').style.display = 'block';
+                    document.getElementById('jwt-form').style.display = 'none';
+                    errorDiv.textContent = '';
+                } else {
+                    errorDiv.textContent = data.message || 'Failed to get token';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        function copyToken() {
+            const token = document.getElementById('jwt-token').textContent;
+            navigator.clipboard.writeText(token).then(() => {
+                const btn = document.querySelector('.copy-button');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy Token';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
 </body>
 </html>
