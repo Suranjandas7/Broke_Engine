@@ -2,11 +2,11 @@
 
 A lightweight Flask-based API server for interacting with Zerodha Kite Connect. Provides endpoints for instrument caching, historical data retrieval, **historical data caching**, access token management with persistent SQLite storage, and **Options Greeks calculation**.
 
-> **🆕 New Feature**: **Options Greeks Calculator**! Calculate Delta, Gamma, Theta, Vega, Rho, and Implied Volatility using Black-Scholes model. Auto-integrated into all option endpoints.
+> **Options Greeks Calculator**! Calculate Delta, Gamma, Theta, Vega, Rho, and Implied Volatility using Black-Scholes model. Auto-integrated into all option endpoints.
 
-> **🆕 Full Options & Derivatives Support**! Trade and analyze options (CE/PE) and futures (FUT) alongside stocks. Auto-detected, seamlessly integrated, with Open Interest fields ready for future enhancements.
+> Trade and analyze options (CE/PE) and futures (FUT) alongside stocks. Auto-detected, seamlessly integrated, with Open Interest fields ready for future enhancements.
 
-> **🚀 Performance**: Cache years of 1-minute historical data locally for lightning-fast backtesting. Multi-format export with Apache Arrow (10-100x faster), Parquet (80-95% smaller), MessagePack, and CSV.
+> Cache years of 1-minute historical data locally for lightning-fast backtesting. Multi-format export with Apache Arrow (10-100x faster), Parquet (80-95% smaller), MessagePack, and CSV.
 
 ## Features
 
