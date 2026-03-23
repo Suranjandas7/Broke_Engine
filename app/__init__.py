@@ -1,5 +1,9 @@
 """Flask application factory."""
 
+# for gevent to run properly ->
+from gevent import monkey
+monkey.patch_all()
+
 import logging
 import os
 from flask import Flask

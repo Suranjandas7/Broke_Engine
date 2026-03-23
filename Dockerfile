@@ -16,4 +16,4 @@ USER app
 
 EXPOSE 5010
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5010", "main:app", "-t 600"]
+CMD ["gunicorn", "-k", "gevent", "--workers", "2", "main:app", "-b", "0.0.0.0:5010", "-t", "240"]
