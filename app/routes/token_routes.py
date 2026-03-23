@@ -57,11 +57,10 @@ def get_token_status():
         
         if token:
             # Mask token for security (show last 4 chars only)
-            masked = '***' + token[-4:] if len(token) > 4 else '***'
             return jsonify({
                 'status': 'success',
                 'token_exists': True,
-                'token_preview': masked,
+                'token': token,
                 'message': 'Access token is configured'
             }), 200
         else:
