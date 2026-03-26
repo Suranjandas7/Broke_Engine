@@ -20,6 +20,7 @@ A lightweight Flask-based API server for interacting with Zerodha Kite Connect. 
 - **High-Performance Queries**: Pandas-optimized database reads with composite indexes
 - **Persistent Token Storage**: Access tokens stored in database
 - **API Key Protection**: Secure endpoints with API key authentication
+- **Rate Limiting**: Per-user request throttling (configurable, default 180 req/min)
 - **Auto-Migration**: Database schema updates applied automatically on startup
 - **Docker Support**: Production-ready containerization with data persistence
 - **Lightweight**: Minimal dependencies, fast deployment

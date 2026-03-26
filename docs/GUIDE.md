@@ -91,6 +91,7 @@ The application requires the following environment variables:
 | `password` | Basic auth password for web UI | Yes | `secure_password` |
 | `apikey` | API key for endpoint protection | Yes | `your_api_key` |
 | `data_sql_url` | PostgreSQL URL (optional) | No | `postgresql://user:pass@host:5432/db` |
+| `RATE_LIMIT_PER_MINUTE` | API rate limit per user per minute (default: 180) | No | `180` |
 
 ### Setting Environment Variables
 
@@ -146,6 +147,40 @@ GET /endpoint?apikey=your_api_key
 ```
 
 The web UI (`/` and `/login`) requires HTTP Basic Authentication using the `user` and `password` environment variables.
+
+### Rate Limiting
+
+All authenticated API endpoints are protected by rate limiting to prevent abuse. The rate limit is applied per user (based on JWT token) using in-memory storage.
+
+**Default Configuration:**
+- **Limit**: 180 requests per minute per user
+- **Storage**: In-memory (no Redis required)
+- **Key**: Username extracted from JWT token
+- **Fallback**: IP address if no valid token
+
+**Configuration via Environment Variable:**
+```yaml
+# docker-compose.yml
+environment:
+  - RATE_LIMIT_PER_MINUTE=180  # Adjust as needed
+```
+
+**Rate Limit Response:**
+When the limit is exceeded, the API returns HTTP 429 (Too Many Requests) with a retry-after header.
+
+```json
+{
+  "error": "Rate limit exceeded: 180 per 1 minute"
+}
+```
+
+**Exempt Endpoints:**
+The following endpoints are exempt from rate limiting:
+- `/` - Home page
+- `/login` - OAuth callback
+- `/auth/token` - Token generation
+- `/cache_instruments` - Instrument caching
+- Static files
 
 ### Endpoints
 

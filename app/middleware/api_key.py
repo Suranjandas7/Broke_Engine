@@ -2,7 +2,7 @@
 
 import jwt
 from datetime import datetime, timedelta, timezone
-from flask import request, Response
+from flask import request, Response, g
 from app.config import Config
 
 
@@ -27,6 +27,26 @@ def verify_token(token):
         return None
 
 
+def get_username_from_request():
+    """Extract username from JWT token in request for rate limiting."""
+    if request.endpoint in ['auth.index', 'auth.login', 'auth.generate_token_endpoint', 'instruments.cache_instruments', 'static']:
+        return None
+    
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return None
+    
+    parts = auth_header.split()
+    if len(parts) != 2 or parts[0].lower() != 'bearer':
+        return None
+    
+    token = parts[1]
+    payload = verify_token(token)
+    if payload:
+        return payload.get('username', 'anonymous')
+    return None
+
+
 def check_api_key():
     """Require JWT token for all endpoints except /, /login, /auth/token, /cache_instruments, and static."""
     if request.endpoint in ['auth.index', 'auth.login', 'auth.generate_token_endpoint', 'instruments.cache_instruments', 'static']:
@@ -46,5 +66,8 @@ def check_api_key():
     payload = verify_token(token)
     if not payload:
         return Response('Invalid or expired token', 401)
+    
+    # Store username in g for rate limiting
+    g.user = payload.get('username', 'anonymous')
     
     return None

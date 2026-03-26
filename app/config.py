@@ -27,6 +27,9 @@ class Config:
     # JWT configuration
     JWT_EXPIRATION_DAYS = int(os.getenv("JWT_EXPIRATION_DAYS", "7"))
     
+    # Rate limiting configuration
+    RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "180"))
+    
     # Options Greeks calculation configuration
     RISK_FREE_RATE = float(os.getenv("RISK_FREE_RATE", "0.065"))  # Default 6.5% for India
     

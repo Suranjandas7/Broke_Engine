@@ -4,6 +4,7 @@ gunicorn==25.0.1
 pydantic==2.10.6
 PyJWT==2.8.0
 gevent
+Flask-Limiter>=3.0.0
 
 # Data processing and export formats
 pandas>=2.0.0

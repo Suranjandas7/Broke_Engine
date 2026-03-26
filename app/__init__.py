@@ -6,7 +6,9 @@ monkey.patch_all()
 
 import logging
 import os
-from flask import Flask
+from flask import Flask, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from app.config import Config
 from app.database import (
     init_instruments_db,
@@ -17,6 +19,7 @@ from app.database import (
 from app.database.historical_data import init_historical_db
 from app.database.migrations import run_migrations
 from app.middleware import check_api_key
+from app.middleware.api_key import get_username_from_request
 from app.routes import register_blueprints
 from app.error_handlers import register_error_handlers
 
@@ -29,6 +32,18 @@ def create_app():
     # Load configuration
     app.config.from_object(Config)
     app.secret_key = Config.SECRET_KEY
+    
+    # Initialize rate limiter with in-memory storage (per API key)
+    limiter = Limiter(
+        app=app,
+        key_func=lambda: get_username_from_request() or get_remote_address(),
+        default_limits=[f"{Config.RATE_LIMIT_PER_MINUTE} per minute"],
+        storage_uri="memory://",
+        strategy="fixed-window"
+    )
+    
+    # Exempt public endpoints from rate limiting
+    limiter.exempt(check_api_key)
     
     # Validate configuration
     try:
