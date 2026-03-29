@@ -3,10 +3,23 @@
 import logging
 from flask import jsonify
 from werkzeug.exceptions import HTTPException
+from kiteconnect.exceptions import TokenException
 
 
 def register_error_handlers(app):
     """Register all error handlers with the Flask app."""
+    
+    @app.errorhandler(TokenException)
+    def handle_token_exception(error):
+        """Handle KiteConnect TokenException (expired/invalid token)."""
+        logging.warning(f"Token expired or invalid: {str(error)}")
+        return jsonify({
+            'status': 'error',
+            'error_code': 'TOKEN_EXPIRED',
+            'message': 'Access token has expired or is invalid. Please login again.',
+            'login_url': '/',
+            'action_required': 'Re-authenticate via browser at the provided login_url'
+        }), 401
     
     @app.errorhandler(400)
     def handle_bad_request(error):

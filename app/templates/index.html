@@ -114,9 +114,61 @@
             color: #d32f2f;
             margin-top: 10px;
         }
+        .error-banner {
+            background-color: #ffebee;
+            border-left: 4px solid #d32f2f;
+            color: #c62828;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .error-banner strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        .flash-message {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .flash-message.error {
+            background-color: #ffebee;
+            border-left: 4px solid #d32f2f;
+            color: #c62828;
+        }
+        .flash-message.info {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            color: #1976D2;
+        }
+        .flash-message.success {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            color: #388E3C;
+        }
     </style>
 </head>
 <body>
+    <!-- Flash Messages from Server -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Token Expiry Error Banner (from URL parameter) -->
+    <div id="token-expired-banner" class="error-banner" style="display: none;">
+        <strong>Access Token Expired</strong>
+        Your Zerodha access token has expired. Please click the login button below to generate a new access token.
+    </div>
+    
     <div class="info">
         <p>Make sure your app with api_key - <code>{{ api_key }}</code> has set redirect to <code>{{ redirect_url }}</code>.</p>
         <p>If not you can set it from your <a href="{{ console_url }}" target="_blank">Kite Connect developer console here</a>.</p>
@@ -149,6 +201,14 @@
     </div>
     
     <script>
+        // Check for token expiry error in URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error') === 'token_expired') {
+            document.getElementById('token-expired-banner').style.display = 'block';
+            // Remove error parameter from URL without reloading
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
         async function getToken() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
