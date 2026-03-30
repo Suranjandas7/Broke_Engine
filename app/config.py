@@ -12,8 +12,8 @@ class Config:
     PORT = 5010
     
     # Zerodha Kite Connect configuration
-    KITE_API_KEY = os.getenv("zerodha_api")
-    KITE_API_SECRET = os.getenv("zerodha_secret")
+    KITE_API_KEY = os.getenv("KITE_API_KEY")
+    KITE_API_SECRET = os.getenv("KITE_API_SECRET")
     
     # URL configuration
     REDIRECT_URL = f"http://{HOST}:{PORT}/login"
@@ -21,8 +21,8 @@ class Config:
     CONSOLE_URL = f"https://developers.kite.trade/apps/{KITE_API_KEY}"
     
     # Basic authentication configuration (for web routes)
-    AUTH_USER = os.getenv("user")
-    AUTH_PASSWORD = os.getenv("password")
+    AUTH_USER = os.getenv("AUTH_USER")
+    AUTH_PASSWORD = os.getenv("AUTH_PASSWORD")
     
     # JWT configuration
     JWT_EXPIRATION_DAYS = int(os.getenv("JWT_EXPIRATION_DAYS", "7"))

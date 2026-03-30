@@ -16,4 +16,4 @@ USER app
 
 EXPOSE 5010
 
-CMD ["gunicorn", "-k", "gevent", "--workers", "2", "main:app", "-b", "0.0.0.0:5010", "-t", "240"]
+CMD ["gunicorn", "-k", "gevent", "--workers", "2", "main:app", "-b", "127.0.0.1:5010", "-t", "240"]

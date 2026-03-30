@@ -7,11 +7,11 @@ services:
     volumes:
       - ./:/app/data
     environment:
-      - zerodha_api=
-      - zerodha_secret=
+      - KITE_API_KEY=
+      - KITE_API_SECRET=
       - data_sql_url=
-      - user=
-      - password=
+      - AUTH_USER=
+      - AUTH_PASSWORD=
       - apikey=
       - JWT_EXPIRATION_DAYS=5
       - JWT_SECRET_KEY=
