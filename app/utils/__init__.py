@@ -3,6 +3,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Tuple
+from flask import jsonify
 
 
 def serializer(obj):
@@ -29,3 +30,11 @@ def parse_ticker(ticker: str) -> Tuple[str, str]:
     if len(parts) != 2 or not parts[0] or not parts[1]:
         raise ValueError("Invalid format. Use TRADINGSYMBOL:EXCHANGE")
     return parts[0], parts[1]
+
+
+def cache_empty_response():
+    """Return standard error response for empty instruments cache."""
+    return jsonify({
+        'status': 'error',
+        'message': 'Instruments cache is empty. Please call /cache_instruments first.'
+    }), 404

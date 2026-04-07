@@ -11,6 +11,34 @@ logger = logging.getLogger(__name__)
 greeks_bp = Blueprint('greeks', __name__)
 
 
+def _build_greeks_result(tradingsymbol: str, exchange: str, instrument: dict, 
+                         greeks_data: dict, include_lot_size: bool = False) -> dict:
+    """
+    Build Greeks result dict with instrument metadata.
+    
+    Args:
+        tradingsymbol: Trading symbol
+        exchange: Exchange code  
+        instrument: Instrument data dict
+        greeks_data: Calculated Greeks dict
+        include_lot_size: If True, include lot_size in result
+        
+    Returns:
+        Dict with ticker info, instrument metadata, and Greeks data
+    """
+    result = {
+        "ticker": tradingsymbol,
+        "exchange": exchange,
+        "option_type": instrument.get('instrument_type', ''),
+        "strike": instrument.get('strike', 0),
+        "expiry": instrument.get('expiry', ''),
+        **greeks_data
+    }
+    if include_lot_size:
+        result["lot_size"] = instrument.get('lot_size', 0)
+    return result
+
+
 @greeks_bp.route('/greeks', methods=['GET'])
 def get_greeks():
     """
@@ -119,13 +147,7 @@ def get_greeks():
         # Build response
         response = {
             "status": "success",
-            "ticker": tradingsymbol,
-            "exchange": exchange,
-            "option_type": instrument.get('instrument_type', ''),
-            "strike": instrument.get('strike', 0),
-            "expiry": instrument.get('expiry', ''),
-            "lot_size": instrument.get('lot_size', 0),
-            **greeks_data
+            **_build_greeks_result(tradingsymbol, exchange, instrument, greeks_data, include_lot_size=True)
         }
         
         # Add risk_free_rate used
@@ -243,14 +265,7 @@ def get_greeks_batch():
                 from app.database.instruments import get_instrument_by_key
                 instrument = get_instrument_by_key(tradingsymbol, exchange)
                 
-                results.append({
-                    "ticker": tradingsymbol,
-                    "exchange": exchange,
-                    "option_type": instrument.get('instrument_type', ''),
-                    "strike": instrument.get('strike', 0),
-                    "expiry": instrument.get('expiry', ''),
-                    **greeks_data
-                })
+                results.append(_build_greeks_result(tradingsymbol, exchange, instrument, greeks_data))
                 
             except Exception as e:
                 logger.error(f"Error processing ticker {ticker}: {e}")

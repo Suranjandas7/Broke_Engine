@@ -14,6 +14,7 @@ from app.database import (
     check_cache_exists,
     DB_PATH
 )
+from app.utils import cache_empty_response
 
 instruments_bp = Blueprint('instruments', __name__)
 
@@ -65,10 +66,7 @@ def get_instrument():
     
     # Check if cache database exists
     if not check_cache_exists():
-        return jsonify({
-            'status': 'error',
-            'message': 'Instruments cache is empty. Please call /cache_instruments first.'
-        }), 404
+        return cache_empty_response()
     
     try:
         # If exchange is provided, look for exact match

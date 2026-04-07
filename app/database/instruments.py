@@ -85,22 +85,25 @@ def get_instrument_by_key(tradingsymbol, exchange):
         ''', (tradingsymbol, exchange))
         row = cursor.fetchone()
         
-        if row:
-            return {
-                'instrument_token': row['instrument_token'],
-                'exchange_token': row['exchange_token'],
-                'tradingsymbol': row['tradingsymbol'],
-                'exchange': row['exchange'],
-                'name': row['name'],
-                'last_price': row['last_price'],
-                'expiry': row['expiry'],
-                'strike': row['strike'],
-                'tick_size': row['tick_size'],
-                'lot_size': row['lot_size'],
-                'instrument_type': row['instrument_type'],
-                'segment': row['segment']
-            }
-        return None
+        return _row_to_dict(row) if row else None
+
+
+def _row_to_dict(row):
+    """Convert a database row to instrument dictionary."""
+    return {
+        'instrument_token': row['instrument_token'],
+        'exchange_token': row['exchange_token'],
+        'tradingsymbol': row['tradingsymbol'],
+        'exchange': row['exchange'],
+        'name': row['name'],
+        'last_price': row['last_price'],
+        'expiry': row['expiry'],
+        'strike': row['strike'],
+        'tick_size': row['tick_size'],
+        'lot_size': row['lot_size'],
+        'instrument_type': row['instrument_type'],
+        'segment': row['segment']
+    }
 
 
 def search_instruments_by_symbol(tradingsymbol):
@@ -113,23 +116,7 @@ def search_instruments_by_symbol(tradingsymbol):
         ''', (tradingsymbol,))
         rows = cursor.fetchall()
         
-        instruments = []
-        for row in rows:
-            instruments.append({
-                'instrument_token': row['instrument_token'],
-                'exchange_token': row['exchange_token'],
-                'tradingsymbol': row['tradingsymbol'],
-                'exchange': row['exchange'],
-                'name': row['name'],
-                'last_price': row['last_price'],
-                'expiry': row['expiry'],
-                'strike': row['strike'],
-                'tick_size': row['tick_size'],
-                'lot_size': row['lot_size'],
-                'instrument_type': row['instrument_type'],
-                'segment': row['segment']
-            })
-        return instruments
+        return [_row_to_dict(row) for row in rows]
 
 
 def get_instruments_count():

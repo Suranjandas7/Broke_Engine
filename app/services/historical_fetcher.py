@@ -31,32 +31,6 @@ MARKET_CLOSE_HOUR = 15
 MARKET_CLOSE_MINUTE = 30
 
 
-def is_option_instrument(instrument: Dict) -> bool:
-    """
-    Check if an instrument is an option (CE/PE) or futures contract.
-    
-    Args:
-        instrument: Instrument dictionary from database
-    
-    Returns:
-        True if instrument is an option/future (CE/PE/FUT), False otherwise
-    
-    Note:
-        Options and futures have Open Interest (OI) data, while stocks don't.
-        This is auto-detected from the instrument_type field in the database.
-    """
-    instrument_type = instrument.get('instrument_type', '').upper()
-    is_option = instrument_type in ['CE', 'PE', 'FUT']
-    
-    if is_option:
-        logger.info(
-            f"Detected {instrument_type} instrument: "
-            f"{instrument.get('tradingsymbol')}:{instrument.get('exchange')}"
-        )
-    
-    return is_option
-
-
 def validate_ticker_exists(ticker: str, exchange: str) -> Optional[Dict]:
     """
     Validate that ticker exists in instruments cache.

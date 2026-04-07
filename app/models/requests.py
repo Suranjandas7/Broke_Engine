@@ -4,6 +4,16 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+def _validate_ticker_format(ticker: str) -> str:
+    """Validate ticker format is SYMBOL:EXCHANGE."""
+    if ':' not in ticker:
+        raise ValueError("Ticker must be in format SYMBOL:EXCHANGE (e.g., SBIN:NSE)")
+    parts = ticker.split(':')
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise ValueError("Invalid ticker format. Use SYMBOL:EXCHANGE")
+    return ticker
+
+
 class HistoricalDataRequest(BaseModel):
     """Historical data request validation model."""
     
@@ -79,12 +89,7 @@ class FetchHistoryRequest(BaseModel):
     @classmethod
     def validate_ticker_format(cls, v):
         """Validate ticker format."""
-        if ':' not in v:
-            raise ValueError("Ticker must be in format SYMBOL:EXCHANGE (e.g., SBIN:NSE)")
-        parts = v.split(':')
-        if len(parts) != 2 or not parts[0] or not parts[1]:
-            raise ValueError("Invalid ticker format. Use SYMBOL:EXCHANGE")
-        return v
+        return _validate_ticker_format(v)
 
 
 class GetHistoryRequest(BaseModel):
@@ -111,12 +116,7 @@ class GetHistoryRequest(BaseModel):
     @classmethod
     def validate_ticker_format(cls, v):
         """Validate ticker format."""
-        if ':' not in v:
-            raise ValueError("Ticker must be in format SYMBOL:EXCHANGE (e.g., SBIN:NSE)")
-        parts = v.split(':')
-        if len(parts) != 2 or not parts[0] or not parts[1]:
-            raise ValueError("Invalid ticker format. Use SYMBOL:EXCHANGE")
-        return v
+        return _validate_ticker_format(v)
     
     @model_validator(mode='after')
     def validate_date_or_year_params(self):

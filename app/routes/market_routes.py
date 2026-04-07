@@ -5,9 +5,38 @@ from flask import Blueprint, request, jsonify
 from app.services import get_kite_client
 from app.database import get_instrument_by_key, check_cache_exists
 from app.services.greeks_calculator import calculate_option_greeks, is_option_instrument, format_greeks_response
-from app.utils import parse_ticker
+from app.utils import parse_ticker, cache_empty_response
 
 market_bp = Blueprint('market', __name__)
+
+
+def _add_option_greeks(result: dict, instrument: dict, tradingsymbol: str, 
+                       exchange: str, option_price: float, include_latest_price: bool = False) -> None:
+    """
+    Add strike, expiry, and Greeks to result dict for options.
+    
+    Args:
+        result: Result dict to modify in-place
+        instrument: Instrument data dict
+        tradingsymbol: Trading symbol
+        exchange: Exchange code
+        option_price: Current option price for Greeks calculation
+        include_latest_price: If True, add latest_price field to result
+    """
+    result['strike'] = instrument.get('strike', 0)
+    result['expiry'] = instrument.get('expiry', '')
+    
+    if include_latest_price:
+        result['latest_price'] = option_price
+    
+    greeks_data = calculate_option_greeks(
+        tradingsymbol=tradingsymbol,
+        exchange=exchange,
+        option_price=option_price
+    )
+    
+    if greeks_data:
+        result['greeks'] = format_greeks_response(greeks_data)
 
 @market_bp.route("/ltp")
 def last_traded_price():
@@ -79,10 +108,7 @@ def last_traded_price():
     
     # Check if cache is populated
     if not check_cache_exists():
-        return jsonify({
-            'status': 'error',
-            'message': 'Instruments cache is empty. Please call /cache_instruments first.'
-        }), 404
+        return cache_empty_response()
 
     ticker_list = [t.strip() for t in tickers.split(',')]
 
@@ -130,19 +156,7 @@ def last_traded_price():
                 
                 # Calculate Greeks for options if enabled
                 if include_greeks and is_option_instrument(instrument_type):
-                    # Add strike and expiry for options
-                    result['strike'] = instrument.get('strike', 0)
-                    result['expiry'] = instrument.get('expiry', '')
-                    
-                    greeks_data = calculate_option_greeks(
-                        tradingsymbol=tradingsymbol,
-                        exchange=exchange,
-                        option_price=ltp_value
-                    )
-                    
-                    if greeks_data:
-                        # Include Greeks in response
-                        result['greeks'] = format_greeks_response(greeks_data)
+                    _add_option_greeks(result, instrument, tradingsymbol, exchange, ltp_value)
                 
                 results[ticker] = result
                 
@@ -234,10 +248,7 @@ def historical_data():
     
     # Check if cache is populated
     if not check_cache_exists():
-        return jsonify({
-            'status': 'error',
-            'message': 'Instruments cache is empty. Please call /cache_instruments first.'
-        }), 404
+        return cache_empty_response()
     
     # Parse tickers
     ticker_list = [t.strip() for t in tickers.split(',')]
@@ -303,19 +314,8 @@ def historical_data():
                 
                 # Calculate Greeks for options if enabled and we have data
                 if include_greeks and is_option_instrument(instrument_type) and latest_close_price:
-                    result['strike'] = instrument.get('strike', 0)
-                    result['expiry'] = instrument.get('expiry', '')
-                    result['latest_price'] = latest_close_price
-                    
-                    greeks_data = calculate_option_greeks(
-                        tradingsymbol=tradingsymbol,
-                        exchange=exchange,
-                        option_price=latest_close_price
-                    )
-                    
-                    if greeks_data:
-                        # Include Greeks in response
-                        result['greeks'] = format_greeks_response(greeks_data)
+                    _add_option_greeks(result, instrument, tradingsymbol, exchange, 
+                                       latest_close_price, include_latest_price=True)
                 
                 results[ticker] = result
                 
