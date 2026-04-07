@@ -33,6 +33,7 @@ from app.utils.export_formats import (
     get_file_extension
 )
 from app.services.greeks_calculator import calculate_option_greeks, is_option_instrument, format_greeks_response
+from app.utils import parse_ticker
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ def fetch_history():
             }), 400
         
         # 2. Parse ticker format
-        symbol, exchange = req.ticker.split(':')
+        symbol, exchange = parse_ticker(req.ticker)
         logger.info(
             f"Fetch history request: {symbol}:{exchange} "
             f"years {req.from_year}-{req.to_year}"
@@ -222,7 +223,7 @@ def get_history():
             }), 400
         
         # 2. Parse ticker format
-        symbol, exchange = req.ticker.split(':')
+        symbol, exchange = parse_ticker(req.ticker)
         
         # Get instrument info for metadata (to include instrument_type)
         from app.database.instruments import get_instrument_by_key

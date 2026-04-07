@@ -4,6 +4,7 @@ import logging
 from flask import Blueprint, request, jsonify
 
 from app.services.greeks_calculator import calculate_option_greeks
+from app.utils import parse_ticker
 
 logger = logging.getLogger(__name__)
 
@@ -71,13 +72,13 @@ def get_greeks():
             }), 400
         
         # Parse ticker format (SYMBOL:EXCHANGE)
-        if ':' not in ticker:
+        try:
+            tradingsymbol, exchange = parse_ticker(ticker)
+        except ValueError:
             return jsonify({
                 "status": "error",
                 "message": "Invalid ticker format. Expected format: SYMBOL:EXCHANGE (e.g., HDFCAMC26MAR2880CE:NFO)"
             }), 400
-        
-        tradingsymbol, exchange = ticker.split(':', 1)
         
         # Get optional risk_free_rate override
         risk_free_rate = None
@@ -216,14 +217,14 @@ def get_greeks_batch():
         
         for ticker in tickers:
             try:
-                if ':' not in ticker:
+                try:
+                    tradingsymbol, exchange = parse_ticker(ticker)
+                except ValueError:
                     errors.append({
                         "ticker": ticker,
                         "error": "Invalid ticker format"
                     })
                     continue
-                
-                tradingsymbol, exchange = ticker.split(':', 1)
                 
                 greeks_data = calculate_option_greeks(
                     tradingsymbol=tradingsymbol,

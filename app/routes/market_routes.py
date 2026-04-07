@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 from app.services import get_kite_client
 from app.database import get_instrument_by_key, check_cache_exists
 from app.services.greeks_calculator import calculate_option_greeks, is_option_instrument, format_greeks_response
+from app.utils import parse_ticker
 
 market_bp = Blueprint('market', __name__)
 
@@ -92,16 +93,11 @@ def last_traded_price():
 
         for ticker in ticker_list:
             # Parse ticker format: TRADINGSYMBOL:EXCHANGE
-            if ':' not in ticker:
-                errors[ticker] = 'Invalid format. Use TRADINGSYMBOL:EXCHANGE'
+            try:
+                tradingsymbol, exchange = parse_ticker(ticker)
+            except ValueError as e:
+                errors[ticker] = str(e)
                 continue
-            
-            parts = ticker.split(':')
-            if len(parts) != 2:
-                errors[ticker] = 'Invalid format. Use TRADINGSYMBOL:EXCHANGE'
-                continue
-            
-            tradingsymbol, exchange = parts
             
             # Look up instrument token from database
             instrument = get_instrument_by_key(tradingsymbol, exchange)
@@ -253,16 +249,11 @@ def historical_data():
         
         for ticker in ticker_list:
             # Parse ticker format: TRADINGSYMBOL:EXCHANGE
-            if ':' not in ticker:
-                errors[ticker] = 'Invalid format. Use TRADINGSYMBOL:EXCHANGE'
+            try:
+                tradingsymbol, exchange = parse_ticker(ticker)
+            except ValueError as e:
+                errors[ticker] = str(e)
                 continue
-            
-            parts = ticker.split(':')
-            if len(parts) != 2:
-                errors[ticker] = 'Invalid format. Use TRADINGSYMBOL:EXCHANGE'
-                continue
-            
-            tradingsymbol, exchange = parts
             
             # Look up instrument token from database
             instrument = get_instrument_by_key(tradingsymbol, exchange)
