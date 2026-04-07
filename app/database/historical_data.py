@@ -10,26 +10,9 @@ from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 from threading import Lock
 import pandas as pd
-
-# Thread-safe lock for database operations
-db_lock = Lock()
-
-# Database path (same directory as instruments.db)
-DB_PATH = "data/instruments.db"
+from .connection import DB_PATH, db_lock, get_db_connection
 
 logger = logging.getLogger(__name__)
-
-
-@contextmanager
-def get_db_connection():
-    """Thread-safe database connection context manager."""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-    finally:
-        conn.close()
-
 
 def sanitize_table_name(ticker: str, exchange: str) -> str:
     """
