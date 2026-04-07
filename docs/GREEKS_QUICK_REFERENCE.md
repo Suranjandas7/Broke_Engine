@@ -14,32 +14,45 @@ Greeks measure option price sensitivity to various factors:
 
 ## Quick Commands
 
+All API endpoints require JWT Bearer token authentication. First, get a token:
+
+```bash
+# Get JWT token
+TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+```
+
 ### 1. Get Greeks for One Option
 ```bash
-curl "http://localhost:5010/greeks?apikey=YOUR_KEY&ticker=NIFTY26MAR24000CE:NFO"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/greeks?ticker=NIFTY26MAR24000CE:NFO"
 ```
 
 ### 2. Get Greeks for Multiple Options
 ```bash
 curl -X POST http://localhost:5010/greeks/batch \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -H "apikey: YOUR_KEY" \
   -d '{"tickers": ["NIFTY26MAR24000CE:NFO", "BANKNIFTY26MAR51000PE:NFO"]}'
 ```
 
 ### 3. Get LTP + Greeks
 ```bash
-curl "http://localhost:5010/ltp?apikey=YOUR_KEY&tickers=NIFTY26MAR24000CE:NFO"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/ltp?tickers=NIFTY26MAR24000CE:NFO&greeks=true"
 ```
 
 ### 4. Get Historical Data + Greeks
 ```bash
-curl "http://localhost:5010/historical_data?apikey=YOUR_KEY&tickers=NIFTY26MAR24000CE:NFO&from=2026-03-15%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/historical_data?tickers=NIFTY26MAR24000CE:NFO&from=2026-03-15%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute&greeks=true"
 ```
 
 ### 5. Disable Greeks (Faster Response)
 ```bash
-curl "http://localhost:5010/ltp?apikey=YOUR_KEY&tickers=NIFTY26MAR24000CE:NFO&greeks=false"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/ltp?tickers=NIFTY26MAR24000CE:NFO&greeks=false"
 ```
 
 ## Greeks Interpretation
@@ -132,7 +145,10 @@ Net: Delta ≈ 0, Theta > 0, Vega < 0
 ### Position Greeks Monitoring
 ```bash
 # Get Greeks for all open positions
-curl -X POST http://localhost:5010/greeks/batch -d '{
+curl -X POST http://localhost:5010/greeks/batch \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
   "tickers": [
     "NIFTY26MAR24000CE:NFO",
     "NIFTY26MAR24500CE:NFO"
@@ -228,10 +244,10 @@ environment:
 ---
 
 **Quick Links:**
-- Full Documentation: `README.md` → "Options Greeks Calculator"
-- Implementation Details: `GREEKS_IMPLEMENTATION_SUMMARY.md`
+- Full Documentation: `GUIDE.md` → "Options Greeks Calculator"
+- Implementation Details: See `app/services/greeks_service.py`
 - API Base URL: `http://localhost:5010`
 
 **Support:**
 - Check logs: `docker-compose logs -f`
-- Test endpoint: `GET /greeks?apikey=test&ticker=NIFTY26MAR24000CE:NFO`
+- Test endpoint: `GET /greeks?ticker=NIFTY26MAR24000CE:NFO` (with JWT Bearer token)

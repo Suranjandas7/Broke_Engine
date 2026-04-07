@@ -80,8 +80,8 @@
 - Validation of required settings
 
 ### 4. Middleware (`app/middleware/`)
-- **API Key Validation**: Checks `apikey` query parameter
-- **Basic Auth**: Protects sensitive endpoints
+- **JWT Authentication**: Validates Bearer token in Authorization header
+- **Basic Auth**: Protects sensitive endpoints (/, /cache_instruments)
 - Executed before route handlers
 
 ### 5. Routes (`app/routes/`)
@@ -107,8 +107,21 @@ Each blueprint handles a specific domain:
 - Check token status
 - Clear tokens
 
+#### History Routes
+- Cache 1-minute historical data
+- Export cached data in multiple formats
+- Check history cache status
+
+#### Greeks Routes
+- Calculate option Greeks (Delta, Gamma, Theta, Vega, Rho)
+- Batch Greeks calculation
+- Implied Volatility calculation
+
 ### 6. Services (`app/services/`)
 - **Kite Client**: Factory for KiteConnect instances
+- **Historical Fetcher**: Fetches and caches historical data with rate limiting
+- **Greeks Calculator**: High-level options Greeks calculation service
+- **Greeks Module** (`greeks/`): Black-Scholes pricing, IV calculation, Greeks formulas
 - Handles token retrieval from session/database
 - Provides configured API clients to routes
 
@@ -116,6 +129,8 @@ Each blueprint handles a specific domain:
 - **Connection**: Thread-safe SQLite connections
 - **Instruments**: Cache of trading instruments
 - **Auth Tokens**: Persistent token storage
+- **Historical Data**: Cached 1-minute OHLCV data
+- **Migrations**: Schema migrations for updates
 
 ### 8. Models (`app/models/`)
 - **Request Models**: Validate incoming data (Pydantic)
@@ -153,9 +168,12 @@ Each blueprint handles a specific domain:
 ┌─────────────────────────────────────┐
 │        Request Security             │
 ├─────────────────────────────────────┤
-│ 1. Basic Auth (for /index)          │
-│ 2. API Key Check (all other routes) │
+│ 1. Basic Auth (for / and           │
+│    /cache_instruments)              │
+│ 2. JWT Bearer Token (all other     │
+│    authenticated routes)            │
 │ 3. OAuth Token (Kite Connect)       │
+│ 4. Rate Limiting (per-user)         │
 └─────────────────────────────────────┘
 ```
 
@@ -200,23 +218,36 @@ main.py
        ├── app/config.py
        ├── app/middleware/
        │    ├── auth.py
-       │    └── api_key.py
+       │    └── api_key.py (JWT validation)
        ├── app/database/
        │    ├── connection.py
        │    ├── instruments.py
-       │    └── auth_tokens.py
+       │    ├── auth_tokens.py
+       │    ├── historical_data.py
+       │    └── migrations.py
        ├── app/services/
-       │    └── kite_client.py
+       │    ├── kite_client.py
+       │    ├── historical_fetcher.py
+       │    ├── greeks_calculator.py
+       │    └── greeks/
+       │         ├── black_scholes.py
+       │         ├── greeks.py
+       │         ├── implied_volatility.py
+       │         └── utils.py
        ├── app/routes/
        │    ├── auth_routes.py
        │    ├── instrument_routes.py
        │    ├── market_routes.py
-       │    └── token_routes.py
+       │    ├── token_routes.py
+       │    ├── history_routes.py
+       │    └── greeks_routes.py
        ├── app/models/
        │    ├── requests.py
        │    └── responses.py
        ├── app/error_handlers.py
-       └── app/utils.py
+       └── app/utils/
+            ├── __init__.py
+            └── export_formats.py
 ```
 
 ## Testing Strategy
@@ -231,10 +262,10 @@ Each layer can be tested independently:
 
 ## Scalability Considerations
 
-- **Horizontal Scaling**: Use Gunicorn with multiple workers
+- **Horizontal Scaling**: Use Gunicorn with multiple workers (configured with gevent)
 - **Database**: Can migrate to PostgreSQL if needed
 - **Caching**: Can add Redis for instrument cache
-- **Rate Limiting**: Can add Flask-Limiter
+- **Rate Limiting**: Already implemented via Flask-Limiter (per-user, in-memory)
 - **API Gateway**: Can add nginx as reverse proxy
 
 ## Configuration Management
@@ -242,11 +273,14 @@ Each layer can be tested independently:
 Environment variables are loaded in `app/config.py`:
 
 ```python
-KITE_API_KEY = os.getenv("zerodha_api")
-KITE_API_SECRET = os.getenv("zerodha_secret")
-AUTH_USER = os.getenv("user")
-AUTH_PASSWORD = os.getenv("password")
-API_KEY = os.getenv("apikey")
+KITE_API_KEY = os.getenv("KITE_API_KEY")
+KITE_API_SECRET = os.getenv("KITE_API_SECRET")
+AUTH_USER = os.getenv("AUTH_USER")
+AUTH_PASSWORD = os.getenv("AUTH_PASSWORD")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", os.urandom(24))
+JWT_EXPIRATION_DAYS = int(os.getenv("JWT_EXPIRATION_DAYS", "7"))
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "180"))
+RISK_FREE_RATE = float(os.getenv("RISK_FREE_RATE", "0.065"))
 ```
 
 All configuration is validated on startup.

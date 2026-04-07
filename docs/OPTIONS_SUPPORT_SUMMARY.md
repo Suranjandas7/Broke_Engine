@@ -80,14 +80,25 @@
 
 ### For Users (No API Changes Needed!)
 
+All API endpoints require JWT Bearer token authentication:
+
+```bash
+# First, get a JWT token
+TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+```
+
 **Stock Query:**
 ```bash
-curl "http://localhost:5010/fetch_history?apikey=test&ticker=SBIN:NSE&from_year=2024&to_year=2024"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/fetch_history?ticker=SBIN:NSE&from_year=2024&to_year=2024"
 ```
 
 **Option Query (identical syntax):**
 ```bash
-curl "http://localhost:5010/fetch_history?apikey=test&ticker=HDFCAMC26MAR2880CE:NFO&from_year=2026&to_year=2026"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/fetch_history?ticker=HDFCAMC26MAR2880CE:NFO&from_year=2026&to_year=2026"
 ```
 
 The system automatically detects the instrument type and handles it appropriately.
@@ -283,7 +294,7 @@ All columns present and returning data correctly.
 
 **What's Next (Future):**
 - Real-time OI tracking via WebSocket
-- Greeks calculation (IV, Delta, Gamma, Theta, Vega)
+- ~~Greeks calculation (IV, Delta, Gamma, Theta, Vega)~~ ✅ **IMPLEMENTED** - See `/greeks` and `/greeks/batch` endpoints
 - Option chain builder
 - Spread strategy builder
 

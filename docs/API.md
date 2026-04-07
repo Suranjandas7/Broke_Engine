@@ -6,10 +6,33 @@ The Broke Engine is a Flask-based API that provides access to historical market 
 
 ## Authentication
 
-### API Key Authentication
-All endpoints (except `/` and `/login`) require API key authentication via query parameter:
-- Parameter: `apikey`
-- Value: Your configured API key
+### JWT Token Authentication
+All endpoints (except `/`, `/login`, `/auth/token`, and `/cache_instruments`) require JWT Bearer token authentication:
+
+**How to get a JWT token:**
+```bash
+# Request a JWT token using your credentials
+curl -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "your_auth_user", "password": "your_auth_password"}'
+
+# Response:
+# {"status": "success", "token": "eyJhbGciOiJIUzI1NiIs..."}
+```
+
+**How to use the JWT token:**
+```bash
+# Include the token in the Authorization header
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/ltp?tickers=SBIN:NSE"
+```
+
+**Token Expiration:** JWT tokens expire after 7 days by default (configurable via `JWT_EXPIRATION_DAYS` env var).
+
+### Basic Authentication
+The following endpoints require HTTP Basic Authentication (username/password):
+- `/` - Home page with Kite login
+- `/cache_instruments` - Populate instruments cache
 
 ### Zerodha Access Token
 Endpoints that fetch data from Zerodha (like `/historical_data` and `/cache_instruments`) 
@@ -18,7 +41,7 @@ require a valid Zerodha Kite Connect access token to be configured on the server
 **Two methods to configure the access token:**
 
 1. **Browser Login (Interactive)**: Visit the root endpoint `/` and complete the Zerodha OAuth flow
-2. **API Method (Programmatic)**: Call `/set_access_token?apikey=YOUR_KEY&access_token=YOUR_TOKEN`
+2. **API Method (Programmatic)**: Use JWT token and call `/set_access_token?access_token=YOUR_TOKEN`
 
 **Token Persistence**: The access token is stored persistently in the database and survives 
 server restarts. Zerodha tokens expire daily, so you must renew them every 24 hours.
@@ -37,8 +60,7 @@ Fetches all available instruments from Kite API and stores them in SQLite databa
 
 **Method:** `GET`
 
-**Query Parameters:**
-- `apikey` (required): Your API key
+**Authentication:** Basic Auth (username/password)
 
 **Response:**
 ```json
@@ -63,8 +85,7 @@ Returns information about the current state of the instruments cache.
 
 **Method:** `GET`
 
-**Query Parameters:**
-- `apikey` (required): Your API key
+**Authentication:** JWT Bearer Token
 
 **Response:**
 ```json
@@ -86,8 +107,7 @@ Deletes the SQLite database file to clear the cache.
 
 **Method:** `GET`
 
-**Query Parameters:**
-- `apikey` (required): Your API key
+**Authentication:** JWT Bearer Token
 
 **Response:**
 ```json
@@ -107,13 +127,15 @@ Configure the Zerodha access token programmatically for API access.
 
 **Method:** `GET`
 
+**Authentication:** JWT Bearer Token
+
 **Query Parameters:**
-- `apikey` (required): Your API key
 - `access_token` (required): Valid Zerodha Kite Connect access token
 
 **Example Request:**
-```
-GET /set_access_token?apikey=your_api_key&access_token=your_zerodha_token
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/set_access_token?access_token=your_zerodha_token"
 ```
 
 **Response:**
@@ -137,15 +159,14 @@ Check if an access token is configured on the server.
 
 **Method:** `GET`
 
-**Query Parameters:**
-- `apikey` (required): Your API key
+**Authentication:** JWT Bearer Token
 
 **Response (Token Exists):**
 ```json
 {
   "status": "success",
   "token_exists": true,
-  "token_preview": "***x7Ks",
+  "token": "your_access_token_here",
   "message": "Access token is configured"
 }
 ```
@@ -167,8 +188,7 @@ Remove the stored access token (useful for forcing re-authentication).
 
 **Method:** `GET`
 
-**Query Parameters:**
-- `apikey` (required): Your API key
+**Authentication:** JWT Bearer Token
 
 **Response:**
 ```json
@@ -188,14 +208,16 @@ Retrieve instrument details by trading symbol and optional exchange.
 
 **Method:** `GET`
 
+**Authentication:** JWT Bearer Token
+
 **Query Parameters:**
-- `apikey` (required): Your API key
 - `tradingsymbol` (required): Trading symbol (e.g., "RELIANCE", "SBIN")
 - `exchange` (optional): Exchange name (e.g., "NSE", "BSE")
 
 **Example Request:**
-```
-GET /get_instrument?apikey=your_api_key&tradingsymbol=RELIANCE&exchange=NSE
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/get_instrument?tradingsymbol=RELIANCE&exchange=NSE"
 ```
 
 **Response (Single Match):**
@@ -255,11 +277,12 @@ Fetch historical OHLCV (Open, High, Low, Close, Volume) data for one or more ins
 
 | Parameter | Required | Description | Example |
 |-----------|----------|-------------|---------|
-| `apikey` | Yes | API key for authentication | `your_api_key_here` |
 | `tickers` | Yes | Comma-separated list of tickers in format `TRADINGSYMBOL:EXCHANGE` | `SBIN:NSE,RELIANCE:NSE` |
 | `from` | Yes | Start date-time (format: `YYYY-MM-DD HH:MM:SS`) | `2025-03-16+09:15:00` |
 | `to` | Yes | End date-time (format: `YYYY-MM-DD HH:MM:SS`) | `2025-03-16+15:30:00` |
 | `interval` | No | Candle interval (default: `day`) | `5minute` |
+
+**Authentication:** JWT Bearer Token (via `Authorization: Bearer <token>` header)
 
 #### Supported Intervals
 - `minute` - 1 minute
@@ -274,14 +297,16 @@ Fetch historical OHLCV (Open, High, Low, Close, Volume) data for one or more ins
 
 ### Example Request
 
-```
-GET /historical_data?apikey=your_api_key&tickers=RELIANCE:NSE&from=2025-03-16+09:15:00&to=2025-04-16+15:30:00&interval=day
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/historical_data?tickers=RELIANCE:NSE&from=2025-03-16+09:15:00&to=2025-04-16+15:30:00&interval=day"
 ```
 
 ### Example Request (Multiple Tickers)
 
-```
-GET /historical_data?apikey=your_api_key&tickers=RELIANCE:NSE,SBIN:NSE,TCS:NSE&from=2025-03-16+09:15:00&to=2025-04-16+15:30:00&interval=day
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/historical_data?tickers=RELIANCE:NSE,SBIN:NSE,TCS:NSE&from=2025-03-16+09:15:00&to=2025-04-16+15:30:00&interval=day"
 ```
 
 ### Response Format
@@ -369,11 +394,12 @@ If some tickers succeed and others fail:
 
 Before using this endpoint, you must:
 
-1. Call `/cache_instruments?apikey=your_api_key` to populate the instruments cache
+1. Call `/cache_instruments` (with Basic Auth) to populate the instruments cache
 2. Ensure you have configured a valid Zerodha access token via:
    - Browser login at `/` (interactive OAuth flow), OR
-   - API call to `/set_access_token?apikey=your_key&access_token=your_token`
-3. Verify token is set: `/get_token_status?apikey=your_api_key`
+   - API call to `/set_access_token?access_token=your_token` (with JWT Bearer token)
+3. Verify token is set: `/get_token_status` (with JWT Bearer token)
+4. Obtain a JWT token via `/auth/token` endpoint
 
 ### Notes
 
@@ -396,11 +422,13 @@ This error occurs when:
 
 **Solution:**
 ```bash
-# Check token status
-curl "http://your-server/get_token_status?apikey=your_key"
+# Check token status (with JWT Bearer token)
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/get_token_status"
 
-# If no token or expired, set a new one
-curl "http://your-server/set_access_token?apikey=your_key&access_token=fresh_token"
+# If no token or expired, set a new one (with JWT Bearer token)
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/set_access_token?access_token=fresh_token"
 ```
 
 ### Access Token Renewal Workflow
@@ -415,7 +443,8 @@ Zerodha access tokens must be renewed daily. Two options:
 
 **Option 2: Manual API Call**
 1. Login to Zerodha Kite Connect manually to get fresh token
-2. Call `/set_access_token?apikey=your_key&access_token=new_token`
+2. Get a JWT token: `POST /auth/token` with username/password
+3. Call `/set_access_token?access_token=new_token` with JWT Bearer token
 
 ### Database Location
 

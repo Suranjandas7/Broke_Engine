@@ -32,11 +32,11 @@ docker-compose logs -f
 pip install -r requirements.txt
 
 # Set environment variables
-export zerodha_api="your_api_key"
-export zerodha_secret="your_api_secret"
-export user="admin"
-export password="your_password"
-export apikey="your_api_key"
+export KITE_API_KEY="your_api_key"
+export KITE_API_SECRET="your_api_secret"
+export AUTH_USER="admin"
+export AUTH_PASSWORD="your_password"
+export JWT_SECRET_KEY="your_secret_key_for_jwt"
 
 # Run the application
 python main.py
@@ -85,13 +85,14 @@ The application requires the following environment variables:
 
 | Variable | Description | Required | Example |
 |----------|-------------|----------|---------|
-| `zerodha_api` | Zerodha Kite API key | Yes | `apikey` |
-| `zerodha_secret` | Zerodha Kite API secret | Yes | `apikey` |
-| `user` | Basic auth username for web UI | Yes | `admin` |
-| `password` | Basic auth password for web UI | Yes | `secure_password` |
-| `apikey` | API key for endpoint protection | Yes | `your_api_key` |
-| `data_sql_url` | PostgreSQL URL (optional) | No | `postgresql://user:pass@host:5432/db` |
+| `KITE_API_KEY` | Zerodha Kite API key | Yes | `your_kite_api_key` |
+| `KITE_API_SECRET` | Zerodha Kite API secret | Yes | `your_kite_api_secret` |
+| `AUTH_USER` | Basic auth username for web UI | Yes | `admin` |
+| `AUTH_PASSWORD` | Basic auth password for web UI | Yes | `secure_password` |
+| `JWT_SECRET_KEY` | Secret key for JWT signing | Recommended | `your_jwt_secret` |
+| `JWT_EXPIRATION_DAYS` | JWT token validity in days (default: 7) | No | `7` |
 | `RATE_LIMIT_PER_MINUTE` | API rate limit per user per minute (default: 180) | No | `180` |
+| `RISK_FREE_RATE` | Risk-free rate for Greeks calculation (default: 0.065) | No | `0.065` |
 
 ### Setting Environment Variables
 
@@ -99,35 +100,35 @@ The application requires the following environment variables:
 Edit the `docker-compose.yml` file:
 ```yaml
 environment:
-  - zerodha_api=your_api_key
-  - zerodha_secret=your_secret
-  - user=admin
-  - password=secure_password
-  - apikey=your_api_key
+  - KITE_API_KEY=your_api_key
+  - KITE_API_SECRET=your_secret
+  - AUTH_USER=admin
+  - AUTH_PASSWORD=secure_password
+  - JWT_SECRET_KEY=your_jwt_secret
 ```
 
 **For Local Development:**
 ```bash
 # Linux/Mac
-export zerodha_api="your_api_key"
-export zerodha_secret="your_secret"
-export user="admin"
-export password="secure_password"
-export apikey="your_api_key"
+export KITE_API_KEY="your_api_key"
+export KITE_API_SECRET="your_secret"
+export AUTH_USER="admin"
+export AUTH_PASSWORD="secure_password"
+export JWT_SECRET_KEY="your_jwt_secret"
 
 # Windows CMD
-set zerodha_api=your_api_key
-set zerodha_secret=your_secret
-set user=admin
-set password=secure_password
-set apikey=your_api_key
+set KITE_API_KEY=your_api_key
+set KITE_API_SECRET=your_secret
+set AUTH_USER=admin
+set AUTH_PASSWORD=secure_password
+set JWT_SECRET_KEY=your_jwt_secret
 
 # Windows PowerShell
-$env:zerodha_api="your_api_key"
-$env:zerodha_secret="your_secret"
-$env:user="admin"
-$env:password="secure_password"
-$env:apikey="your_api_key"
+$env:KITE_API_KEY="your_api_key"
+$env:KITE_API_SECRET="your_secret"
+$env:AUTH_USER="admin"
+$env:AUTH_PASSWORD="secure_password"
+$env:JWT_SECRET_KEY="your_jwt_secret"
 ```
 
 ### Configuration Class
@@ -141,12 +142,28 @@ Configuration is managed in `app/config.py`:
 
 ### Authentication
 
-Most API endpoints require an `apikey` query parameter for authentication:
-```
-GET /endpoint?apikey=your_api_key
+#### JWT Token Authentication (Primary Method)
+
+Most API endpoints require JWT Bearer token authentication:
+
+**Step 1: Get a JWT Token**
+```bash
+curl -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "your_auth_user", "password": "your_auth_password"}'
+
+# Response: {"status": "success", "token": "eyJhbGciOiJIUzI1NiIs..."}
 ```
 
-The web UI (`/` and `/login`) requires HTTP Basic Authentication using the `user` and `password` environment variables.
+**Step 2: Use the Token in Requests**
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/ltp?tickers=SBIN:NSE"
+```
+
+#### Basic Authentication (Web UI)
+
+The web UI (`/` and `/cache_instruments`) requires HTTP Basic Authentication using the `AUTH_USER` and `AUTH_PASSWORD` environment variables.
 
 ### Rate Limiting
 
@@ -208,8 +225,7 @@ Test endpoint for historical data (development only).
 
 ##### `GET /cache_instruments`
 Cache all instruments from Kite API into local SQLite database.
-- **Auth**: API key required
-- **Query Params**: `apikey`
+- **Auth**: Basic Auth (username/password)
 - **Returns**:
   ```json
   {
@@ -222,9 +238,8 @@ Cache all instruments from Kite API into local SQLite database.
 
 ##### `GET /get_instrument`
 Retrieve instrument details by trading symbol.
-- **Auth**: API key required
+- **Auth**: JWT Bearer Token
 - **Query Params**:
-  - `apikey` (required)
   - `tradingsymbol` (required) - e.g., `SBIN`, `NIFTY`
   - `exchange` (optional) - e.g., `NSE`, `BSE`
 - **Returns**:
@@ -250,8 +265,7 @@ Retrieve instrument details by trading symbol.
 
 ##### `GET /cache_status`
 Get status of the instruments cache.
-- **Auth**: API key required
-- **Query Params**: `apikey`
+- **Auth**: JWT Bearer Token
 - **Returns**:
   ```json
   {
@@ -266,8 +280,7 @@ Get status of the instruments cache.
 
 ##### `GET /clear_cache`
 Clear the instruments cache (deletes database file).
-- **Auth**: API key required
-- **Query Params**: `apikey`
+- **Auth**: JWT Bearer Token
 - **Returns**:
   ```json
   {
@@ -317,28 +330,33 @@ Kite's `historical_data` API **does not provide historical Open Interest (OI) da
 **Example 1: Fetch Option LTP**
 ```bash
 # Get current price of HDFC AMC March 2880 Call Option
-curl "http://localhost:5010/ltp?apikey=test&tickers=HDFCAMC26MAR2880CE:NFO"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/ltp?tickers=HDFCAMC26MAR2880CE:NFO"
 ```
 
 **Example 2: Fetch Option Historical Data**
 ```bash
 # Get historical data for an option (real-time, no caching)
-curl "http://localhost:5010/historical_data?apikey=test&tickers=HDFCAMC26MAR2880CE:NFO&from=2026-03-01%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/historical_data?tickers=HDFCAMC26MAR2880CE:NFO&from=2026-03-01%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute"
 ```
 
 **Example 3: Cache Option Historical Data**
 ```bash
 # Cache 1-minute data for an option (for backtesting)
-curl "http://localhost:5010/fetch_history?apikey=test&ticker=HDFCAMC26MAR2880CE:NFO&from_year=2026&to_year=2026"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/fetch_history?ticker=HDFCAMC26MAR2880CE:NFO&from_year=2026&to_year=2026"
 
 # Export cached option data
-curl "http://localhost:5010/get_history?apikey=test&ticker=HDFCAMC26MAR2880CE:NFO&from_year=2026&to_year=2026&format=json"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/get_history?ticker=HDFCAMC26MAR2880CE:NFO&from_year=2026&to_year=2026&format=json"
 ```
 
 **Example 4: Mixed Stock and Option Query**
 ```bash
 # Get LTP for both stocks and options in one call
-curl "http://localhost:5010/ltp?apikey=test&tickers=SBIN:NSE,HDFCAMC26MAR2880CE:NFO,RELIANCE:NSE"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/ltp?tickers=SBIN:NSE,HDFCAMC26MAR2880CE:NFO,RELIANCE:NSE"
 ```
 
 ##### Response Format for Options
@@ -396,7 +414,8 @@ curl "http://localhost:5010/ltp?apikey=test&tickers=SBIN:NSE,HDFCAMC26MAR2880CE:
 **Method 1: Query by Trading Symbol**
 ```bash
 # Search for all HDFC AMC options
-curl "http://localhost:5010/get_instrument?apikey=test&tradingsymbol=HDFCAMC26MAR2880CE&exchange=NFO"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/get_instrument?tradingsymbol=HDFCAMC26MAR2880CE&exchange=NFO"
 ```
 
 **Method 2: Check Instruments Database**
@@ -449,7 +468,8 @@ for row in cursor.fetchall():
 Calculate Greeks for a single option:
 
 ```bash
-GET /greeks?apikey=test&ticker=HDFCAMC26MAR2880CE:NFO
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/greeks?ticker=NIFTY26MAR24000CE:NFO"
 ```
 
 **Response:**
@@ -491,17 +511,17 @@ GET /greeks?apikey=test&ticker=HDFCAMC26MAR2880CE:NFO
 Calculate Greeks for multiple options in one request:
 
 ```bash
-POST /greeks/batch
-Content-Type: application/json
-
-{
-  "tickers": [
-    "HDFCAMC26MAR2880CE:NFO",
-    "HDFCAMC26MAR2900CE:NFO",
-    "NIFTY26APR24000PE:NFO"
-  ],
-  "risk_free_rate": 0.065
-}
+curl -X POST http://localhost:5010/greeks/batch \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tickers": [
+      "HDFCAMC26MAR2880CE:NFO",
+      "HDFCAMC26MAR2900CE:NFO",
+      "NIFTY26APR24000PE:NFO"
+    ],
+    "risk_free_rate": 0.065
+  }'
 ```
 
 **Response:**
@@ -527,7 +547,8 @@ Greeks are **automatically calculated** for options when using these endpoints:
 
 **GET /ltp** - Get LTP with Greeks:
 ```bash
-GET /ltp?apikey=test&tickers=HDFCAMC26MAR2880CE:NFO&greeks=true
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/ltp?tickers=HDFCAMC26MAR2880CE:NFO&greeks=true"
 ```
 
 Response includes both LTP and Greeks:
@@ -557,7 +578,8 @@ Response includes both LTP and Greeks:
 
 **GET /historical_data** - Historical data with Greeks:
 ```bash
-GET /historical_data?apikey=test&tickers=HDFCAMC26MAR2880CE:NFO&from=2026-03-15%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute&greeks=true
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/historical_data?tickers=HDFCAMC26MAR2880CE:NFO&from=2026-03-15%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute&greeks=true"
 ```
 
 Greeks calculated using the **latest candle's close price**:
@@ -576,7 +598,8 @@ Greeks calculated using the **latest candle's close price**:
 
 **GET /get_history** - Cached data with Greeks:
 ```bash
-GET /get_history?apikey=test&ticker=HDFCAMC26MAR2880CE:NFO&from_year=2026&to_year=2026&format=json&greeks=true
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:5010/get_history?ticker=HDFCAMC26MAR2880CE:NFO&from_year=2026&to_year=2026&format=json&greeks=true"
 ```
 
 Greeks included in metadata (calculated from latest record):
@@ -786,17 +809,17 @@ GET /greeks/batch
 
 ##### `GET /ltp`
 Fetch last traded price (LTP) for one or more instruments in real-time.
-- **Auth**: API key required
+- **Auth**: JWT Bearer Token
 - **Query Params**:
-  - `apikey` (required)
   - `tickers` (required) - Comma-separated list in format `SYMBOL:EXCHANGE`
 - **Important Notes**:
   - Requires instruments cache to be populated (call `/cache_instruments` first)
   - Returns current LTP for each ticker
   - Fast real-time price quotes
 - **Example**:
-  ```
-  GET /ltp?apikey=test&tickers=SBIN:NSE,RELIANCE:NSE
+  ```bash
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/ltp?tickers=SBIN:NSE,RELIANCE:NSE"
   ```
 - **Returns**:
   ```json
@@ -822,9 +845,8 @@ Fetch last traded price (LTP) for one or more instruments in real-time.
 
 ##### `GET /historical_data`
 Fetch historical OHLC data directly from Kite API for one or more instruments (no caching).
-- **Auth**: API key required
+- **Auth**: JWT Bearer Token
 - **Query Params**:
-  - `apikey` (required)
   - `tickers` (required) - Comma-separated list in format `SYMBOL:EXCHANGE`
   - `from` (required) - Start date-time (format: `YYYY-MM-DD HH:MM:SS`)
   - `to` (required) - End date-time (format: `YYYY-MM-DD HH:MM:SS`)
@@ -834,8 +856,9 @@ Fetch historical OHLC data directly from Kite API for one or more instruments (n
   - **Historical Data Limits**: Intraday intervals (minute, 15minute, etc.) are typically available for the last 60-200 days only. For older data, use `day` interval
   - **Multiple Tickers**: Supports fetching data for multiple instruments in a single request
 - **Example**:
-  ```
-  GET /historical_data?apikey=test&tickers=SBIN:NSE,RELIANCE:NSE&from=2026-03-20 09:15:00&to=2026-03-20 15:30:00&interval=15minute
+  ```bash
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/historical_data?tickers=SBIN:NSE,RELIANCE:NSE&from=2026-03-20%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute"
   ```
 - **Returns**:
   ```json
@@ -902,9 +925,8 @@ The caching system allows you to store years of 1-minute historical data locally
 ##### `GET /fetch_history`
 Fetch and cache 1-minute historical data for a ticker across a year range (multi-year support).
 
-- **Auth**: API key required
+- **Auth**: JWT Bearer Token
 - **Query Params**:
-  - `apikey` (required)
   - `ticker` (required) - Format: `SYMBOL:EXCHANGE` (e.g., `SBIN:NSE`)
   - `from_year` (required) - Start year (2015 onwards)
   - `to_year` (required) - End year (max: current year)
@@ -926,10 +948,12 @@ Fetch and cache 1-minute historical data for a ticker across a year range (multi
 - **Examples**:
   ```bash
   # Single year
-  curl "http://localhost:5010/fetch_history?apikey=test&ticker=SBIN:NSE&from_year=2024&to_year=2024"
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/fetch_history?ticker=SBIN:NSE&from_year=2024&to_year=2024"
   
   # Multi-year (3 years)
-  curl "http://localhost:5010/fetch_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2025"
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/fetch_history?ticker=SBIN:NSE&from_year=2023&to_year=2025"
   ```
 - **Returns** (multi-year response):
   ```json
@@ -977,16 +1001,14 @@ Fetch and cache 1-minute historical data for a ticker across a year range (multi
 ##### `GET /get_history`
 Export cached historical data in multiple formats (supports both year-based and date-based queries).
 
-- **Auth**: API key required
+- **Auth**: JWT Bearer Token
 - **Query Params (Option 1 - Year Range)**:
-  - `apikey` (required)
   - `ticker` (required) - Format: `SYMBOL:EXCHANGE`
   - `from_year` (required) - Start year (inclusive)
   - `to_year` (required) - End year (inclusive)
   - `format` (optional) - Export format: `json` (default), `arrow`, `parquet`, `msgpack`, `csv`
   - **Validation**: Returns error if any year in range is not fully cached
 - **Query Params (Option 2 - Date Range)**:
-  - `apikey` (required)
   - `ticker` (required) - Format: `SYMBOL:EXCHANGE`
   - `from_date` (required) - Start datetime (format: `YYYY-MM-DD HH:MM:SS`)
   - `to_date` (required) - End datetime (format: `YYYY-MM-DD HH:MM:SS`)
@@ -1010,19 +1032,28 @@ Export cached historical data in multiple formats (supports both year-based and 
 - **Examples**:
   ```bash
   # Year-based query (single year, JSON - default)
-  curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_year=2024&to_year=2024"
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/get_history?ticker=SBIN:NSE&from_year=2024&to_year=2024"
   
   # Year-based query (multiple years, Arrow format - fastest)
-  curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2025&format=arrow" -o sbin_2023_2025.arrow
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/get_history?ticker=SBIN:NSE&from_year=2023&to_year=2025&format=arrow" \
+    -o sbin_2023_2025.arrow
   
   # Year-based query (Parquet format - best compression)
-  curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2025&format=parquet" -o sbin_2023_2025.parquet
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/get_history?ticker=SBIN:NSE&from_year=2023&to_year=2025&format=parquet" \
+    -o sbin_2023_2025.parquet
   
   # Date-based query (CSV format - Excel compatible)
-  curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_date=2024-01-15%2009:15:00&to_date=2024-06-30%2015:30:00&format=csv" -o sbin_h1_2024.csv
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/get_history?ticker=SBIN:NSE&from_date=2024-01-15%2009:15:00&to_date=2024-06-30%2015:30:00&format=csv" \
+    -o sbin_h1_2024.csv
   
   # Date-based query (MessagePack format)
-  curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_date=2024-03-20%2009:15:00&to_date=2024-03-20%2015:30:00&format=msgpack" -o sbin_intraday.msgpack
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/get_history?ticker=SBIN:NSE&from_date=2024-03-20%2009:15:00&to_date=2024-03-20%2015:30:00&format=msgpack" \
+    -o sbin_intraday.msgpack
   ```
 
 - **Client Usage Examples**:
@@ -1033,13 +1064,18 @@ Export cached historical data in multiple formats (supports both year-based and 
   import pyarrow.feather as feather
   from io import BytesIO
   
+  # Get JWT token first
+  auth_response = requests.post('http://localhost:5010/auth/token',
+      json={'username': 'admin', 'password': 'your_password'})
+  token = auth_response.json()['token']
+  headers = {'Authorization': f'Bearer {token}'}
+  
   response = requests.get('http://localhost:5010/get_history', params={
-      'apikey': 'test',
       'ticker': 'SBIN:NSE',
       'from_year': 2023,
       'to_year': 2025,
       'format': 'arrow'
-  })
+  }, headers=headers)
   
   # Zero-copy read into pandas DataFrame (10-100x faster than JSON)
   df = feather.read_feather(BytesIO(response.content))
@@ -1053,12 +1089,11 @@ Export cached historical data in multiple formats (supports both year-based and 
   from io import BytesIO
   
   response = requests.get('http://localhost:5010/get_history', params={
-      'apikey': 'test',
       'ticker': 'SBIN:NSE',
       'from_year': 2023,
       'to_year': 2025,
       'format': 'parquet'
-  })
+  }, headers=headers)
   
   df = pd.read_parquet(BytesIO(response.content))
   ```
@@ -1069,12 +1104,11 @@ Export cached historical data in multiple formats (supports both year-based and 
   from io import StringIO
   
   response = requests.get('http://localhost:5010/get_history', params={
-      'apikey': 'test',
       'ticker': 'SBIN:NSE',
       'from_year': 2024,
       'to_year': 2024,
       'format': 'csv'
-  })
+  }, headers=headers)
   
   df = pd.read_csv(StringIO(response.text), comment='#')
   ```
@@ -1084,12 +1118,11 @@ Export cached historical data in multiple formats (supports both year-based and 
   import msgpack
   
   response = requests.get('http://localhost:5010/get_history', params={
-      'apikey': 'test',
       'ticker': 'SBIN:NSE',
       'from_year': 2024,
       'to_year': 2024,
       'format': 'msgpack'
-  })
+  }, headers=headers)
   
   data = msgpack.unpackb(response.content)
   print(data['ticker'], data['record_count'])
@@ -1166,11 +1199,11 @@ Export cached historical data in multiple formats (supports both year-based and 
 ##### `GET /history_cache_status`
 Get statistics about cached historical data.
 
-- **Auth**: API key required
-- **Query Params**: `apikey`
+- **Auth**: JWT Bearer Token
 - **Example**:
   ```bash
-  curl "http://localhost:5010/history_cache_status?apikey=test"
+  curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+    "http://localhost:5010/history_cache_status"
   ```
 - **Returns**:
   ```json
@@ -1203,11 +1236,28 @@ Get statistics about cached historical data.
 
 #### Token Management
 
+##### `POST /auth/token`
+Generate a JWT token for API authentication.
+- **Auth**: None (uses credentials in body)
+- **Body** (JSON):
+  ```json
+  {
+    "username": "your_auth_user",
+    "password": "your_auth_password"
+  }
+  ```
+- **Returns**:
+  ```json
+  {
+    "status": "success",
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+  }
+  ```
+
 ##### `GET /set_access_token`
 Set the Zerodha access token programmatically.
-- **Auth**: API key required
+- **Auth**: JWT Bearer Token
 - **Query Params**:
-  - `apikey` (required)
   - `access_token` (required) - Zerodha access token
 - **Returns**:
   ```json
@@ -1219,8 +1269,7 @@ Set the Zerodha access token programmatically.
 
 ##### `GET /get_token_status`
 Check if access token is configured.
-- **Auth**: API key required
-- **Query Params**: `apikey`
+- **Auth**: JWT Bearer Token
 - **Returns**:
   ```json
   {
@@ -1233,8 +1282,7 @@ Check if access token is configured.
 
 ##### `GET /clear_token`
 Clear the stored access token (forces re-authentication).
-- **Auth**: API key required
-- **Query Params**: `apikey`
+- **Auth**: JWT Bearer Token
 - **Returns**:
   ```json
   {
@@ -1275,24 +1323,34 @@ Clear the stored access token (forces re-authentication).
 Here's a typical workflow for using the historical data caching feature:
 
 ```bash
-# Step 1: Cache instruments (if not already done)
-curl "http://localhost:5010/cache_instruments?apikey=test"
+# Step 0: Get a JWT token first
+TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+
+# Step 1: Cache instruments (if not already done) - requires Basic Auth
+curl -u admin:your_password "http://localhost:5010/cache_instruments"
 
 # Step 2: Fetch historical data for multiple years (now in ONE request!)
-curl "http://localhost:5010/fetch_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2025"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/fetch_history?ticker=SBIN:NSE&from_year=2023&to_year=2025"
 
 # Step 3: Check cache status
-curl "http://localhost:5010/history_cache_status?apikey=test"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/history_cache_status"
 
 # Step 4: Export data for analysis (year-based)
-curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2025" > sbin_data.json
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/get_history?ticker=SBIN:NSE&from_year=2023&to_year=2025" > sbin_data.json
 
-# Step 5: Export specific date range (NEW - date-based query)
-curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_date=2024-01-15%2009:15:00&to_date=2024-06-30%2015:30:00" > sbin_h1_2024.json
+# Step 5: Export specific date range (date-based query)
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/get_history?ticker=SBIN:NSE&from_date=2024-01-15%2009:15:00&to_date=2024-06-30%2015:30:00" > sbin_h1_2024.json
 
 # Step 6: Daily updates (for current year)
 # Run this daily to keep current year data up to date
-curl "http://localhost:5010/fetch_history?apikey=test&ticker=SBIN:NSE&from_year=2026&to_year=2026"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/fetch_history?ticker=SBIN:NSE&from_year=2026&to_year=2026"
 ```
 
 **Performance Comparison:**
@@ -1316,13 +1374,19 @@ curl "http://localhost:5010/fetch_history?apikey=test&ticker=SBIN:NSE&from_year=
 ```python
 import requests
 
+# First, get a JWT token
+auth_response = requests.post(
+    'http://localhost:5010/auth/token',
+    json={'username': 'admin', 'password': 'your_password'}
+)
+token = auth_response.json()['token']
+headers = {'Authorization': f'Bearer {token}'}
+
 # Fetch current prices for multiple stocks
 response = requests.get(
     'http://localhost:5010/ltp',
-    params={
-        'apikey': 'your_api_key',
-        'tickers': 'SBIN:NSE,RELIANCE:NSE,TCS:NSE'
-    }
+    params={'tickers': 'SBIN:NSE,RELIANCE:NSE,TCS:NSE'},
+    headers=headers
 )
 
 data = response.json()
@@ -1343,15 +1407,23 @@ for ticker, info in data['results'].items():
 import requests
 import pandas as pd
 
+# Get JWT token
+auth_response = requests.post(
+    'http://localhost:5010/auth/token',
+    json={'username': 'admin', 'password': 'your_password'}
+)
+token = auth_response.json()['token']
+headers = {'Authorization': f'Bearer {token}'}
+
 # Fetch and cache historical data (multi-year in one request!)
 response = requests.get(
     'http://localhost:5010/fetch_history',
     params={
-        'apikey': 'test',
         'ticker': 'SBIN:NSE',
         'from_year': 2023,
         'to_year': 2025
-    }
+    },
+    headers=headers
 )
 print(response.json())
 
@@ -1359,11 +1431,11 @@ print(response.json())
 response = requests.get(
     'http://localhost:5010/get_history',
     params={
-        'apikey': 'test',
         'ticker': 'SBIN:NSE',
         'from_year': 2023,
         'to_year': 2025
-    }
+    },
+    headers=headers
 )
 
 data = response.json()
@@ -1376,15 +1448,15 @@ df.set_index('date', inplace=True)
 print(f"Loaded {len(df)} records")
 print(df.head())
 
-# Export specific date range (NEW - date-based query)
+# Export specific date range (date-based query)
 response = requests.get(
     'http://localhost:5010/get_history',
     params={
-        'apikey': 'test',
         'ticker': 'SBIN:NSE',
         'from_date': '2024-01-15 09:15:00',
         'to_date': '2024-06-30 15:30:00'
-    }
+    },
+    headers=headers
 )
 
 df_h1 = pd.DataFrame(response.json()['data'])
@@ -1416,22 +1488,24 @@ print(df.tail())
 import requests
 import pandas as pd
 
-# Fetch historical data directly from API (original endpoint)
-
-```python
-import requests
-import pandas as pd
+# Get JWT token
+auth_response = requests.post(
+    'http://localhost:5010/auth/token',
+    json={'username': 'admin', 'password': 'your_password'}
+)
+token = auth_response.json()['token']
+headers = {'Authorization': f'Bearer {token}'}
 
 # Fetch historical data
 response = requests.get(
     'http://localhost:5010/historical_data',
     params={
-        'apikey': 'your_api_key',
         'tickers': 'SBIN:NSE,RELIANCE:NSE',
         'from': '2026-03-20 09:15:00',
         'to': '2026-03-20 15:30:00',
         'interval': '15minute'
-    }
+    },
+    headers=headers
 )
 
 data = response.json()
@@ -1448,15 +1522,25 @@ for ticker, info in data['results'].items():
 #### JavaScript/TypeScript
 
 ```javascript
+// Get JWT token first
+const authResponse = await fetch('http://localhost:5010/auth/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ username: 'admin', password: 'your_password' })
+});
+const { token } = await authResponse.json();
+
 const response = await fetch(
   'http://localhost:5010/historical_data?' + 
   new URLSearchParams({
-    apikey: 'your_api_key',
     tickers: 'SBIN:NSE,RELIANCE:NSE',
     from: '2026-03-20 09:15:00',
     to: '2026-03-20 15:30:00',
     interval: '15minute'
-  })
+  }),
+  {
+    headers: { 'Authorization': `Bearer ${token}` }
+  }
 );
 
 const data = await response.json();
@@ -1473,7 +1557,14 @@ for (const [ticker, info] of Object.entries(data.results)) {
 #### cURL
 
 ```bash
-curl -X GET "http://localhost:5010/historical_data?apikey=your_api_key&tickers=SBIN:NSE,RELIANCE:NSE&from=2026-03-20%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute"
+# Get JWT token
+TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+
+# Use the token for API requests
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/historical_data?tickers=SBIN:NSE,RELIANCE:NSE&from=2026-03-20%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute"
 ```
 
 ---
@@ -1628,7 +1719,15 @@ ports:
 **Solution**:
 1. Access tokens expire daily
 2. Re-login via browser: `http://localhost:5010/`
-3. Or set token programmatically: `/set_access_token?apikey=test&access_token=NEW_TOKEN`
+3. Or set token programmatically using JWT:
+   ```bash
+   TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+   
+   curl -H "Authorization: Bearer $TOKEN" \
+     "http://localhost:5010/set_access_token?access_token=NEW_TOKEN"
+   ```
 
 ### Instruments Cache Empty
 
@@ -1636,11 +1735,15 @@ ports:
 
 **Solution**:
 ```bash
-# Populate the instruments cache
-curl "http://localhost:5010/cache_instruments?apikey=your_api_key"
+# Populate the instruments cache (requires Basic Auth)
+curl -u admin:your_password "http://localhost:5010/cache_instruments"
 
-# Verify cache status
-curl "http://localhost:5010/cache_status?apikey=your_api_key"
+# Verify cache status (requires JWT)
+TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:5010/cache_status"
 ```
 
 ### Historical Data Fetch Fails
@@ -1660,11 +1763,18 @@ curl "http://localhost:5010/cache_status?apikey=your_api_key"
 
 **Solution**:
 ```bash
+# Get JWT token
+TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+
 # Fetch the missing years (now multi-year support!)
-curl "http://localhost:5010/fetch_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2024"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/fetch_history?ticker=SBIN:NSE&from_year=2023&to_year=2024"
 
 # Then export
-curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2024"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/get_history?ticker=SBIN:NSE&from_year=2023&to_year=2024"
 ```
 
 ### Options-Related Issues
@@ -1679,7 +1789,8 @@ curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_year=20
 1. Options follow the format: `SYMBOL + YY + MMM + STRIKE + TYPE` (e.g., `HDFCAMC26MAR2880CE`)
 2. Query the instruments database to find available options:
    ```bash
-   curl "http://localhost:5010/cache_instruments?apikey=test"  # Refresh cache first
+   # Refresh cache first (requires Basic Auth)
+   curl -u admin:your_password "http://localhost:5010/cache_instruments"
    ```
 3. Or check Zerodha Kite's option chain for the underlying symbol
 
@@ -1689,12 +1800,18 @@ curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_year=20
 
 ### Invalid API Credentials
 
-**Problem**: "Invalid or missing API key" on all requests.
+**Problem**: "Invalid or missing credentials" or 401 Unauthorized on requests.
 
 **Solution**:
-1. Check environment variables are set correctly
-2. Verify apikey in docker-compose.yml or .env
-3. Include `?apikey=your_api_key` in all API requests
+1. Check environment variables are set correctly (`AUTH_USER`, `AUTH_PASSWORD`, `JWT_SECRET_KEY`)
+2. For API endpoints, get a JWT token first:
+   ```bash
+   curl -X POST http://localhost:5010/auth/token \
+     -H "Content-Type: application/json" \
+     -d '{"username": "your_auth_user", "password": "your_auth_password"}'
+   ```
+3. Include `Authorization: Bearer YOUR_TOKEN` header in all API requests
+4. For web UI endpoints (`/`, `/cache_instruments`), use Basic Auth with `AUTH_USER`/`AUTH_PASSWORD`
 
 ### Docker Container Won't Start
 
@@ -1814,27 +1931,40 @@ For issues related to:
 
 ### Common Commands
 
+All API endpoints require JWT Bearer token authentication:
+
 ```bash
-# Initial Setup
-curl "http://localhost:5010/cache_instruments?apikey=test"
+# Step 0: Get JWT Token (required for all API calls)
+TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+
+# Initial Setup (cache instruments - requires Basic Auth)
+curl -u admin:your_password "http://localhost:5010/cache_instruments"
 
 # Get Real-time Prices (LTP)
-curl "http://localhost:5010/ltp?apikey=test&tickers=SBIN:NSE,RELIANCE:NSE"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/ltp?tickers=SBIN:NSE,RELIANCE:NSE"
 
 # Fetch & Cache Historical Data (multi-year)
-curl "http://localhost:5010/fetch_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2025"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/fetch_history?ticker=SBIN:NSE&from_year=2023&to_year=2025"
 
 # Export Cached Data (year-based)
-curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_year=2023&to_year=2025"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/get_history?ticker=SBIN:NSE&from_year=2023&to_year=2025"
 
 # Export Cached Data (date-based)
-curl "http://localhost:5010/get_history?apikey=test&ticker=SBIN:NSE&from_date=2024-01-15%2009:15:00&to_date=2024-06-30%2015:30:00"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/get_history?ticker=SBIN:NSE&from_date=2024-01-15%2009:15:00&to_date=2024-06-30%2015:30:00"
 
 # Get Real-time OHLC Data
-curl "http://localhost:5010/historical_data?apikey=test&tickers=SBIN:NSE&from=2026-03-20%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/historical_data?tickers=SBIN:NSE&from=2026-03-20%2009:15:00&to=2026-03-20%2015:30:00&interval=15minute"
 
 # Check Cache Status
-curl "http://localhost:5010/history_cache_status?apikey=test"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/history_cache_status"
 ```
 
 ### Data Format Standards

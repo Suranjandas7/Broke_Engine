@@ -135,13 +135,22 @@ Token Expired?
 
 ### Manual Testing Steps
 
+**Note:** All API endpoints now require JWT Bearer token authentication. Get a token first:
+```bash
+TOKEN=$(curl -s -X POST http://localhost:5010/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}' | jq -r '.token')
+```
+
 #### Test 1: API Request with Expired Token
 ```bash
-# Set an invalid token
-curl "http://localhost:5010/set_access_token?apikey=test&access_token=invalid_token_12345"
+# Set an invalid Zerodha token
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/set_access_token?access_token=invalid_token_12345"
 
 # Make API call - should return JSON error
-curl "http://localhost:5010/historical_data?apikey=test&tickers=SBIN:NSE&from=2025-03-16+09:15:00&to=2025-03-16+15:30:00&interval=day"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/historical_data?tickers=SBIN:NSE&from=2025-03-16+09:15:00&to=2025-03-16+15:30:00&interval=day"
 
 # Expected Response:
 # {
@@ -166,7 +175,8 @@ http://localhost:5010/testing
 #### Test 3: Verify Token Cleared
 ```bash
 # After token expiry, check token status
-curl "http://localhost:5010/get_token_status?apikey=test"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/get_token_status"
 
 # Expected Response:
 # {
@@ -184,7 +194,8 @@ http://localhost:5010/
 # Click "Login to generate access token"
 # Complete OAuth flow
 # Verify new token works
-curl "http://localhost:5010/get_token_status?apikey=test"
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5010/get_token_status"
 ```
 
 ## Key Features
