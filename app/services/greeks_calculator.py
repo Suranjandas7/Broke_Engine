@@ -254,3 +254,30 @@ def is_option_instrument(instrument_type: str) -> bool:
         True if option (CE/PE), False otherwise
     """
     return instrument_type in ['CE', 'PE']
+
+
+def format_greeks_response(greeks_data: Dict) -> Dict:
+    """
+    Format greeks_data into a flattened response dictionary.
+    
+    Args:
+        greeks_data: Dictionary returned by calculate_option_greeks()
+        
+    Returns:
+        Flattened dictionary with greeks at top level
+    """
+    return {
+        'delta': greeks_data['greeks']['delta'],
+        'gamma': greeks_data['greeks']['gamma'],
+        'theta': greeks_data['greeks']['theta'],
+        'vega': greeks_data['greeks']['vega'],
+        'rho': greeks_data['greeks']['rho'],
+        'implied_volatility': greeks_data['implied_volatility'],
+        'theoretical_price': greeks_data['theoretical_price'],
+        'intrinsic_value': greeks_data['intrinsic_value'],
+        'time_value': greeks_data['time_value'],
+        'moneyness': greeks_data['moneyness'],
+        'underlying_symbol': greeks_data['underlying_symbol'],
+        'underlying_price': greeks_data['underlying_price'],
+        'days_to_expiry': greeks_data['days_to_expiry']
+    }

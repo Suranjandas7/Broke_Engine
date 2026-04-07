@@ -32,7 +32,7 @@ from app.utils.export_formats import (
     get_content_type,
     get_file_extension
 )
-from app.services.greeks_calculator import calculate_option_greeks, is_option_instrument
+from app.services.greeks_calculator import calculate_option_greeks, is_option_instrument, format_greeks_response
 
 logger = logging.getLogger(__name__)
 
@@ -325,21 +325,7 @@ def get_history():
                 )
                 
                 if greeks_data:
-                    metadata['greeks'] = {
-                        'delta': greeks_data['greeks']['delta'],
-                        'gamma': greeks_data['greeks']['gamma'],
-                        'theta': greeks_data['greeks']['theta'],
-                        'vega': greeks_data['greeks']['vega'],
-                        'rho': greeks_data['greeks']['rho'],
-                        'implied_volatility': greeks_data['implied_volatility'],
-                        'theoretical_price': greeks_data['theoretical_price'],
-                        'intrinsic_value': greeks_data['intrinsic_value'],
-                        'time_value': greeks_data['time_value'],
-                        'moneyness': greeks_data['moneyness'],
-                        'underlying_symbol': greeks_data['underlying_symbol'],
-                        'underlying_price': greeks_data['underlying_price'],
-                        'days_to_expiry': greeks_data['days_to_expiry']
-                    }
+                    metadata['greeks'] = format_greeks_response(greeks_data)
                     metadata['latest_close'] = latest_close
                     metadata['strike'] = instrument.get('strike', 0)
                     metadata['expiry'] = instrument.get('expiry', '')

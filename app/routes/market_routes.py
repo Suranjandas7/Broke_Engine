@@ -4,7 +4,7 @@ import logging
 from flask import Blueprint, request, jsonify
 from app.services import get_kite_client
 from app.database import get_instrument_by_key, check_cache_exists
-from app.services.greeks_calculator import calculate_option_greeks, is_option_instrument
+from app.services.greeks_calculator import calculate_option_greeks, is_option_instrument, format_greeks_response
 
 market_bp = Blueprint('market', __name__)
 
@@ -146,21 +146,7 @@ def last_traded_price():
                     
                     if greeks_data:
                         # Include Greeks in response
-                        result['greeks'] = {
-                            'delta': greeks_data['greeks']['delta'],
-                            'gamma': greeks_data['greeks']['gamma'],
-                            'theta': greeks_data['greeks']['theta'],
-                            'vega': greeks_data['greeks']['vega'],
-                            'rho': greeks_data['greeks']['rho'],
-                            'implied_volatility': greeks_data['implied_volatility'],
-                            'theoretical_price': greeks_data['theoretical_price'],
-                            'intrinsic_value': greeks_data['intrinsic_value'],
-                            'time_value': greeks_data['time_value'],
-                            'moneyness': greeks_data['moneyness'],
-                            'underlying_symbol': greeks_data['underlying_symbol'],
-                            'underlying_price': greeks_data['underlying_price'],
-                            'days_to_expiry': greeks_data['days_to_expiry']
-                        }
+                        result['greeks'] = format_greeks_response(greeks_data)
                 
                 results[ticker] = result
                 
@@ -338,21 +324,7 @@ def historical_data():
                     
                     if greeks_data:
                         # Include Greeks in response
-                        result['greeks'] = {
-                            'delta': greeks_data['greeks']['delta'],
-                            'gamma': greeks_data['greeks']['gamma'],
-                            'theta': greeks_data['greeks']['theta'],
-                            'vega': greeks_data['greeks']['vega'],
-                            'rho': greeks_data['greeks']['rho'],
-                            'implied_volatility': greeks_data['implied_volatility'],
-                            'theoretical_price': greeks_data['theoretical_price'],
-                            'intrinsic_value': greeks_data['intrinsic_value'],
-                            'time_value': greeks_data['time_value'],
-                            'moneyness': greeks_data['moneyness'],
-                            'underlying_symbol': greeks_data['underlying_symbol'],
-                            'underlying_price': greeks_data['underlying_price'],
-                            'days_to_expiry': greeks_data['days_to_expiry']
-                        }
+                        result['greeks'] = format_greeks_response(greeks_data)
                 
                 results[ticker] = result
                 
