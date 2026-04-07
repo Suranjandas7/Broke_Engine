@@ -1,8 +1,10 @@
 # Broke Engine
 
-A lightweight Flask-based API server for interacting with Zerodha Kite Connect. Provides endpoints for instrument caching, historical data retrieval, **historical data caching**, access token management with persistent SQLite storage, and **Options Greeks calculation**.
+A lightweight Flask-based wrapper for interacting with Zerodha Kite Connect (+ potentially other broker APIs in the future). The api provides endpoints for instrument caching, historical data retrieval, historical data caching, access token management with persistent SQLite storage, and Options Greeks calculation.
 
-> **Options Greeks Calculator**! Calculate Delta, Gamma, Theta, Vega, Rho, and Implied Volatility using Black-Scholes model. Auto-integrated into all option endpoints.
+## Key highlights:
+
+> Calculate Delta, Gamma, Theta, Vega, Rho, and Implied Volatility using Black-Scholes model. Auto-integrated into all option endpoints.
 
 > Trade and analyze options (CE/PE) and futures (FUT) alongside stocks. Auto-detected, seamlessly integrated, with Open Interest fields ready for future enhancements.
 
@@ -30,3 +32,5 @@ A lightweight Flask-based API server for interacting with Zerodha Kite Connect. 
 **Built with Flask + Zerodha Kite Connect**
 
 Disclaimer: This software is not, in any form, connected to Zerodha or any of its business affiliates. It just uses the API and builds upon it. The user will be required to have a paid Kite API key and must manage it on their own, in order for this to work. The software is shipped as is under an open source license.
+
+@2026 Suranjan Das
