@@ -7,7 +7,13 @@ class Config:
     """Application configuration class."""
     
     # Flask configuration - Used as JWT signing key
-    SECRET_KEY = os.getenv("JWT_SECRET_KEY", os.urandom(24))
+    # CRITICAL: Must be set in production to prevent token invalidation on restart
+    SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+    if not SECRET_KEY:
+        raise ValueError(
+            "JWT_SECRET_KEY environment variable must be set. "
+            "Generate a secure key with: python -c 'import secrets; print(secrets.token_hex(32))'"
+        )
     HOST = "0.0.0.0"
     PORT = 5010
     

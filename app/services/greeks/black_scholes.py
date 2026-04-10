@@ -27,6 +27,9 @@ def black_scholes_price(
     Returns:
         Theoretical option price
         
+    Raises:
+        ValueError: If input parameters are invalid
+        
     Formula:
         C = S*N(d1) - K*e^(-r*T)*N(d2)  [Call]
         P = K*e^(-r*T)*N(-d2) - S*N(-d1)  [Put]
@@ -36,6 +39,16 @@ def black_scholes_price(
         d2 = d1 - σ*√T
         N(x) = Cumulative standard normal distribution
     """
+    # Validate inputs to prevent division by zero and mathematical errors
+    if S <= 0:
+        raise ValueError(f"Spot price must be positive, got S={S}")
+    if K <= 0:
+        raise ValueError(f"Strike price must be positive, got K={K}")
+    if T <= 0:
+        raise ValueError(f"Time to expiry must be positive, got T={T}")
+    if sigma <= 0:
+        raise ValueError(f"Volatility must be positive, got sigma={sigma}")
+    
     # Calculate d1 and d2
     d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
@@ -63,7 +76,20 @@ def calculate_d1_d2(S: float, K: float, T: float, r: float, sigma: float) -> tup
         
     Returns:
         Tuple of (d1, d2)
+        
+    Raises:
+        ValueError: If input parameters are invalid
     """
+    # Validate inputs to prevent division by zero and mathematical errors
+    if S <= 0:
+        raise ValueError(f"Spot price must be positive, got S={S}")
+    if K <= 0:
+        raise ValueError(f"Strike price must be positive, got K={K}")
+    if T <= 0:
+        raise ValueError(f"Time to expiry must be positive, got T={T}")
+    if sigma <= 0:
+        raise ValueError(f"Volatility must be positive, got sigma={sigma}")
+    
     d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
     

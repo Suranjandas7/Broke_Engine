@@ -146,6 +146,7 @@ def cache_status():
 
 
 @instruments_bp.route("/clear_cache")
+@requires_basic_auth
 def clear_cache():
     """Clear the instruments cache by deleting the database file."""
     try:
