@@ -8,7 +8,9 @@ from flask import jsonify
 
 def serializer(obj):
     """Custom JSON serializer for dates and decimals."""
-    return isinstance(obj, (date, datetime, Decimal)) and str(obj)
+    if isinstance(obj, (date, datetime, Decimal)):
+        return str(obj)
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 
 def parse_ticker(ticker: str) -> Tuple[str, str]:

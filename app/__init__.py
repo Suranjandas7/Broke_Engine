@@ -42,9 +42,6 @@ def create_app():
         strategy="fixed-window"
     )
     
-    # Exempt public endpoints from rate limiting
-    limiter.exempt(check_api_key)
-    
     # Validate configuration
     try:
         Config.validate()
